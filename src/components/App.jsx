@@ -321,15 +321,7 @@ function KanbanView({ clienteId }) {
             {selectedLead.resumo ? (
               <div style={{ background: co.bg, borderRadius: 10, padding: 16, border: `1px solid ${co.border}` }}>
                 <div style={{ color: co.textDim, fontSize: 11, fontWeight: 600, marginBottom: 10 }}>RESUMO DA QUALIFICAÇÃO</div>
-                {selectedLead.resumo.split("\n").map((line, i, arr) => {
-                  const [k, ...v] = line.split(":")
-                  return (
-                    <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: i < arr.length - 1 ? `1px solid ${co.border}` : "none" }}>
-                      <span style={{ color: co.textMuted, fontSize: 12 }}>{k}</span>
-                      <span style={{ color: co.text, fontSize: 12, fontWeight: 500 }}>{v.join(":").trim()}</span>
-                    </div>
-                  )
-                })}
+                <p style={{ color: co.text, fontSize: 13, lineHeight: 1.7, margin: 0, whiteSpace: "pre-wrap" }}>{selectedLead.resumo}</p>
               </div>
             ) : (
               <div style={{ background: co.bg, borderRadius: 10, padding: 20, textAlign: "center", border: `1px solid ${co.border}` }}>
