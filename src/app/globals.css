@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #0A0A0F;
+  color: #E8E8ED;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
