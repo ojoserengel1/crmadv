@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 const supabase = createClient()
@@ -134,7 +134,7 @@ function Sidebar({ user, activeTab, onTabChange, onLogout }) {
   const isAdmin = user.role === "admin"
   const tabs = isAdmin
     ? [{ id: "clientes", label: "Clientes", icon: "◷" }]
-    : [{ id: "kanban", label: "Leads", icon: "◫" }, { id: "config", label: "Configurações", icon: "⚙" }]
+    : [{ id: "kanban", label: "Leads", icon: "◫" }, { id: "chat", label: "Chat", icon: "💬" }, { id: "config", label: "Configurações", icon: "⚙" }]
   return (
     <div style={{ width: 220, height: "100vh", background: co.bgCard, borderRight: `1px solid ${co.border}`, display: "flex", flexDirection: "column", padding: "20px 12px", boxSizing: "border-box", flexShrink: 0 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 8px", marginBottom: 32 }}>
@@ -594,6 +594,151 @@ function ConfigView({ clienteId }) {
 // ============================================================
 // ADMIN — LISTA DE CLIENTES
 // ============================================================
+// ============================================================
+// CHAT (Cliente)
+// ============================================================
+function ChatView({ clienteId }) {
+  const [conversations, setConversations] = useState([])
+  const [leads, setLeads] = useState([])
+  const [selectedSession, setSelectedSession] = useState(null)
+  const [messages, setMessages] = useState([])
+  const [searchQuery, setSearchQuery] = useState('')
+  const [loading, setLoading] = useState(true)
+  const messagesEndRef = useRef(null)
+
+  useEffect(() => {
+    const load = async () => {
+      const { data: ags } = await supabase.from('agentes').select('id').eq('cliente_id', clienteId)
+      if (!ags?.length) { setLoading(false); return }
+      const agenteIds = ags.map(a => a.id)
+
+      const { data: leadsData } = await supabase.from('leads').select('id, telefone, nome, nicho').in('agente_id', agenteIds)
+      setLeads(leadsData || [])
+      if (!leadsData?.length) { setLoading(false); return }
+
+      const telefones = [...new Set(leadsData.map(l => l.telefone).filter(Boolean))]
+      const { data: chatData } = await supabase.from('chat_memory').select('id, session_id, message').in('session_id', telefones).order('id', { ascending: false })
+
+      const sessionsMap = {}
+      for (const msg of (chatData || [])) {
+        if (!sessionsMap[msg.session_id]) sessionsMap[msg.session_id] = msg
+      }
+
+      const convs = Object.values(sessionsMap).map(last => {
+        const lead = leadsData.find(l => l.telefone === last.session_id)
+        const msg = typeof last.message === 'string' ? JSON.parse(last.message) : last.message
+        return { session_id: last.session_id, lead, lastMessage: msg, lastId: last.id }
+      }).sort((a, b) => b.lastId - a.lastId)
+
+      setConversations(convs)
+      setLoading(false)
+    }
+    load()
+  }, [clienteId])
+
+  useEffect(() => {
+    if (!selectedSession) return
+    const loadMsgs = async () => {
+      const { data } = await supabase.from('chat_memory').select('id, session_id, message').eq('session_id', selectedSession).order('id', { ascending: true })
+      setMessages((data || []).map(m => ({ ...m, message: typeof m.message === 'string' ? JSON.parse(m.message) : m.message })))
+    }
+    loadMsgs()
+
+    const channel = supabase.channel(`chat_${selectedSession}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_memory', filter: `session_id=eq.${selectedSession}` }, (payload) => {
+        const m = payload.new
+        setMessages(prev => [...prev, { ...m, message: typeof m.message === 'string' ? JSON.parse(m.message) : m.message }])
+        setConversations(prev => prev.map(c => c.session_id === selectedSession ? { ...c, lastMessage: typeof m.message === 'string' ? JSON.parse(m.message) : m.message, lastId: m.id } : c))
+      })
+      .subscribe()
+    return () => supabase.removeChannel(channel)
+  }, [selectedSession])
+
+  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
+
+  const selectedLead = leads.find(l => l.telefone === selectedSession)
+  const filtered = conversations.filter(c => (c.lead?.nome || c.session_id).toLowerCase().includes(searchQuery.toLowerCase()))
+
+  if (loading) return <Loading />
+
+  return (
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+      {/* LISTA DE CONVERSAS */}
+      <div style={{ width: 280, borderRight: `1px solid ${co.border}`, display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+        <div style={{ padding: '20px 16px 12px', borderBottom: `1px solid ${co.border}` }}>
+          <h2 style={{ color: co.text, fontSize: 16, fontWeight: 700, margin: '0 0 12px' }}>Chat</h2>
+          <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Buscar conversas..."
+            style={{ width: '100%', padding: '8px 12px', background: co.bgInput, border: `1px solid ${co.border}`, borderRadius: 8, color: co.text, fontSize: 12, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+        </div>
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          {filtered.map(conv => (
+            <div key={conv.session_id} onClick={() => setSelectedSession(conv.session_id)}
+              style={{ padding: '14px 16px', cursor: 'pointer', background: selectedSession === conv.session_id ? co.primaryBg : 'transparent', borderBottom: `1px solid ${co.border}`, transition: 'background 0.1s', borderLeft: selectedSession === conv.session_id ? `3px solid ${co.primary}` : '3px solid transparent' }}
+              onMouseEnter={e => { if (selectedSession !== conv.session_id) e.currentTarget.style.background = co.bgHover }}
+              onMouseLeave={e => { if (selectedSession !== conv.session_id) e.currentTarget.style.background = 'transparent' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
+                <span style={{ color: co.text, fontSize: 13, fontWeight: 600 }}>{conv.lead?.nome || 'Lead não cadastrado'}</span>
+                {conv.lead?.nicho && <span style={{ fontSize: 10, color: co.purple, fontWeight: 600 }}>{conv.lead.nicho}</span>}
+              </div>
+              <p style={{ color: co.textMuted, fontSize: 11, margin: '0 0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {conv.lastMessage?.content?.slice(0, 45)}{conv.lastMessage?.content?.length > 45 ? '...' : ''}
+              </p>
+              <div style={{ color: co.textDim, fontSize: 10 }}>{conv.session_id?.replace(/(\d{2})(\d{2})(\d{4,5})(\d{4})/, '+$1 ($2) $3-$4')}</div>
+            </div>
+          ))}
+          {filtered.length === 0 && (
+            <div style={{ padding: 32, textAlign: 'center', color: co.textMuted, fontSize: 13 }}>
+              {conversations.length === 0 ? 'Nenhuma conversa ainda' : 'Nenhum resultado'}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ÁREA DE MENSAGENS */}
+      {selectedSession ? (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div style={{ padding: '16px 24px', borderBottom: `1px solid ${co.border}`, display: 'flex', alignItems: 'center', gap: 12, background: co.bgCard }}>
+            <div style={{ width: 40, height: 40, borderRadius: '50%', background: `linear-gradient(135deg, ${co.primary}, ${co.purple})`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 16, flexShrink: 0 }}>
+              {(selectedLead?.nome || '?')[0].toUpperCase()}
+            </div>
+            <div>
+              <div style={{ color: co.text, fontWeight: 600, fontSize: 15 }}>{selectedLead?.nome || 'Lead não cadastrado'}</div>
+              <div style={{ color: co.textMuted, fontSize: 12 }}>{selectedSession?.replace(/(\d{2})(\d{2})(\d{4,5})(\d{4})/, '+$1 ($2) $3-$4')}</div>
+            </div>
+            {selectedLead?.nicho && <Badge color="purple">{selectedLead.nicho}</Badge>}
+          </div>
+
+          <div style={{ flex: 1, overflowY: 'auto', padding: '24px 32px', display: 'flex', flexDirection: 'column', gap: 10, background: co.bg }}>
+            {messages.map((msg) => {
+              const isAI = msg.message?.type === 'ai'
+              return (
+                <div key={msg.id} style={{ display: 'flex', justifyContent: isAI ? 'flex-end' : 'flex-start' }}>
+                  <div style={{ maxWidth: '65%', padding: '10px 14px', borderRadius: isAI ? '16px 16px 4px 16px' : '16px 16px 16px 4px', background: isAI ? co.primary : co.bgCard, border: isAI ? 'none' : `1px solid ${co.border}`, color: isAI ? '#fff' : co.text, fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                    {msg.message?.content}
+                  </div>
+                </div>
+              )
+            })}
+            {messages.length === 0 && <div style={{ textAlign: 'center', color: co.textMuted, fontSize: 13, marginTop: 40 }}>Nenhuma mensagem</div>}
+            <div ref={messagesEndRef} />
+          </div>
+
+          <div style={{ padding: '16px 24px', borderTop: `1px solid ${co.border}`, display: 'flex', gap: 12, alignItems: 'center', background: co.bgCard }}>
+            <input placeholder="Envio manual em breve — configure a API Key da Evolution nos ajustes"
+              disabled style={{ flex: 1, padding: '12px 16px', background: co.bgInput, border: `1px solid ${co.border}`, borderRadius: 24, color: co.textDim, fontSize: 12, outline: 'none', fontFamily: 'inherit', cursor: 'not-allowed' }} />
+            <button disabled style={{ width: 44, height: 44, borderRadius: '50%', background: co.primary, border: 'none', color: '#fff', fontSize: 18, cursor: 'not-allowed', opacity: 0.4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>→</button>
+          </div>
+        </div>
+      ) : (
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, background: co.bg }}>
+          <div style={{ fontSize: 56, opacity: 0.3 }}>💬</div>
+          <p style={{ color: co.textMuted, fontSize: 14, margin: 0 }}>Selecione uma conversa para visualizar</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function AdminClientesView({ onSelectCliente }) {
   const [clientes, setClientes] = useState([])
   const [filtro, setFiltro] = useState('todos')
@@ -965,6 +1110,7 @@ export default function App() {
       if (activeTab === 'editor') return <AdminEditorView cliente={selectedCliente} />
     } else {
       if (activeTab === 'kanban') return <KanbanView clienteId={clienteId} />
+      if (activeTab === 'chat') return <ChatView clienteId={clienteId} />
       if (activeTab === 'config') return <ConfigView clienteId={clienteId} />
     }
     return null
