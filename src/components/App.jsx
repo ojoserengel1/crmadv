@@ -601,11 +601,36 @@ function AdminClientesView({ onSelectCliente }) {
   const [novoForm, setNovoForm] = useState({ nome: '', nome_cliente: '', email: '', senha: '' })
   const [criando, setCriando] = useState(false)
   const [erroNovo, setErroNovo] = useState('')
+  const [editingCliente, setEditingCliente] = useState(null)
+  const [savingCliente, setSavingCliente] = useState(false)
+  const [erroEdit, setErroEdit] = useState('')
 
   const fetchClientes = async () => {
     const { data } = await supabase.from('clientes').select('*, agentes(id, nome, ia_ativa)')
     setClientes(data || [])
     setLoading(false)
+  }
+
+  const openEditCliente = async (cl) => {
+    const { data: profile } = await supabase.from('profiles').select('nome, email').eq('id', cl.profile_id).single()
+    setEditingCliente({ id: cl.id, profile_id: cl.profile_id, nome_cliente: cl.nome_cliente, nome: profile?.nome || '', email: profile?.email || '' })
+    setErroEdit('')
+  }
+
+  const atualizarCliente = async () => {
+    if (!editingCliente.nome_cliente || !editingCliente.nome) { setErroEdit('Preencha todos os campos'); return }
+    setSavingCliente(true)
+    setErroEdit('')
+    const res = await fetch('/api/admin/atualizar-cliente', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(editingCliente),
+    })
+    const data = await res.json()
+    if (!res.ok) { setErroEdit(data.error || 'Erro ao atualizar'); setSavingCliente(false); return }
+    await fetchClientes()
+    setEditingCliente(null)
+    setSavingCliente(false)
   }
 
   useEffect(() => { fetchClientes() }, [])
@@ -653,12 +678,35 @@ function AdminClientesView({ onSelectCliente }) {
                     {ags.map(a => <Badge key={a.id} color={a.ia_ativa ? "purple" : "warning"}>{a.nome} {a.ia_ativa ? "ON" : "OFF"}</Badge>)}
                   </div>
                 </div>
-                <span style={{ color: co.textDim, fontSize: 18 }}>→</span>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <Btn size="sm" variant="ghost" onClick={e => { e.stopPropagation(); openEditCliente(cl) }}>✎ Editar</Btn>
+                  <span style={{ color: co.textDim, fontSize: 18 }}>→</span>
+                </div>
               </div>
             </div>
           )
         })}
       </div>
+
+      {editingCliente && (
+        <div onClick={() => setEditingCliente(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: 440, background: co.bgCard, borderRadius: 16, border: `1px solid ${co.border}`, padding: 28, boxShadow: "0 25px 60px rgba(0,0,0,0.5)" }}>
+            <h3 style={{ color: co.text, fontSize: 18, fontWeight: 700, margin: "0 0 6px" }}>Editar Cliente</h3>
+            <p style={{ color: co.textMuted, fontSize: 13, margin: "0 0 20px" }}>Atualize as informações do escritório.</p>
+            <Input label="NOME DO RESPONSÁVEL" value={editingCliente.nome} onChange={v => setEditingCliente(p => ({ ...p, nome: v }))} placeholder="Dr. João Silva" />
+            <Input label="NOME DO ESCRITÓRIO" value={editingCliente.nome_cliente} onChange={v => setEditingCliente(p => ({ ...p, nome_cliente: v }))} placeholder="Silva Advocacia" />
+            <div style={{ marginBottom: 16, padding: "10px 14px", background: co.bg, borderRadius: 8, border: `1px solid ${co.border}` }}>
+              <span style={{ fontSize: 11, color: co.textDim, fontWeight: 500 }}>EMAIL (não editável): </span>
+              <span style={{ fontSize: 13, color: co.textMuted }}>{editingCliente.email}</span>
+            </div>
+            {erroEdit && <p style={{ color: co.danger, fontSize: 13, margin: "0 0 16px", padding: "8px 12px", background: co.dangerBg, borderRadius: 8 }}>{erroEdit}</p>}
+            <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
+              <Btn variant="ghost" size="md" onClick={() => setEditingCliente(null)} style={{ flex: 1 }}>Cancelar</Btn>
+              <Btn size="md" onClick={atualizarCliente} disabled={savingCliente} style={{ flex: 1 }}>{savingCliente ? "Salvando..." : "Atualizar Cliente"}</Btn>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showNovoCliente && (
         <div onClick={() => setShowNovoCliente(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
