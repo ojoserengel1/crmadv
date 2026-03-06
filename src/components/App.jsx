@@ -166,6 +166,8 @@ function KanbanView({ clienteId }) {
   const [activeAgente, setActiveAgente] = useState(null)
   const [loading, setLoading] = useState(true)
   const [selectedLead, setSelectedLead] = useState(null)
+  const [editingLead, setEditingLead] = useState(null)
+  const [savingLead, setSavingLead] = useState(false)
   const [dragItem, setDragItem] = useState(null)
   const [showGerenciar, setShowGerenciar] = useState(false)
   const [etapasEdit, setEtapasEdit] = useState([])
@@ -245,6 +247,28 @@ function KanbanView({ clienteId }) {
     setShowGerenciar(false)
   }
 
+  const updateLead = async () => {
+    setSavingLead(true)
+    const { data } = await supabase
+      .from('leads')
+      .update({
+        nome: editingLead.nome,
+        telefone: editingLead.telefone,
+        nicho: editingLead.nicho,
+        etapa_id: editingLead.etapa_id,
+        resumo: editingLead.resumo,
+      })
+      .eq('id', editingLead.id)
+      .select()
+      .single()
+    if (data) {
+      setLeads(prev => prev.map(l => l.id === data.id ? data : l))
+      setSelectedLead(data)
+    }
+    setSavingLead(false)
+    setEditingLead(null)
+  }
+
   if (loading) return <Loading />
 
   return (
@@ -311,7 +335,10 @@ function KanbanView({ clienteId }) {
                 <h3 style={{ color: co.text, fontSize: 18, fontWeight: 700, margin: 0 }}>{selectedLead.nome || selectedLead.telefone}</h3>
                 <p style={{ color: co.textMuted, fontSize: 13, margin: "4px 0 0" }}>{selectedLead.telefone?.replace(/(\d{2})(\d{2})(\d{5})(\d{4})/, "+$1 ($2) $3-$4")}</p>
               </div>
-              <button onClick={() => setSelectedLead(null)} style={{ background: "none", border: "none", color: co.textMuted, fontSize: 20, cursor: "pointer" }}>×</button>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <Btn size="sm" variant="ghost" onClick={() => { setEditingLead({ ...selectedLead }); setSelectedLead(null) }}>✎ Editar</Btn>
+                <button onClick={() => setSelectedLead(null)} style={{ background: "none", border: "none", color: co.textMuted, fontSize: 20, cursor: "pointer" }}>×</button>
+              </div>
             </div>
             <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
               <Badge color="primary">{selectedLead.status}</Badge>
@@ -328,6 +355,54 @@ function KanbanView({ clienteId }) {
                 <p style={{ color: co.textMuted, fontSize: 13, margin: 0 }}>Qualificação em andamento...</p>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* MODAL — EDITAR LEAD */}
+      {editingLead && (
+        <div onClick={() => setEditingLead(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: 520, maxHeight: "85vh", overflow: "auto", background: co.bgCard, borderRadius: 16, border: `1px solid ${co.border}`, padding: 28, boxShadow: "0 25px 60px rgba(0,0,0,0.5)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+              <div>
+                <h3 style={{ color: co.text, fontSize: 18, fontWeight: 700, margin: 0 }}>Editar Lead</h3>
+                <p style={{ color: co.textMuted, fontSize: 12, margin: "4px 0 0" }}>Atualize as informações do lead</p>
+              </div>
+              <button onClick={() => setEditingLead(null)} style={{ background: "none", border: "none", color: co.textMuted, fontSize: 20, cursor: "pointer" }}>×</button>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div>
+                <label style={{ display: "block", fontSize: 12, color: co.textMuted, marginBottom: 6, fontWeight: 500 }}>NOME</label>
+                <input value={editingLead.nome || ''} onChange={e => setEditingLead(p => ({ ...p, nome: e.target.value }))}
+                  style={{ width: "100%", padding: "10px 14px", background: co.bgInput, border: `1px solid ${co.border}`, borderRadius: 8, color: co.text, fontSize: 13, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }} />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: 12, color: co.textMuted, marginBottom: 6, fontWeight: 500 }}>TELEFONE</label>
+                <input value={editingLead.telefone || ''} onChange={e => setEditingLead(p => ({ ...p, telefone: e.target.value }))}
+                  style={{ width: "100%", padding: "10px 14px", background: co.bgInput, border: `1px solid ${co.border}`, borderRadius: 8, color: co.text, fontSize: 13, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }} />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: 12, color: co.textMuted, marginBottom: 6, fontWeight: 500 }}>NICHO / TIPO</label>
+                <input value={editingLead.nicho || ''} onChange={e => setEditingLead(p => ({ ...p, nicho: e.target.value }))}
+                  style={{ width: "100%", padding: "10px 14px", background: co.bgInput, border: `1px solid ${co.border}`, borderRadius: 8, color: co.text, fontSize: 13, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }} />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: 12, color: co.textMuted, marginBottom: 6, fontWeight: 500 }}>ETAPA DO FUNIL</label>
+                <select value={editingLead.etapa_id || ''} onChange={e => setEditingLead(p => ({ ...p, etapa_id: e.target.value }))}
+                  style={{ width: "100%", padding: "10px 14px", background: co.bgInput, border: `1px solid ${co.border}`, borderRadius: 8, color: co.text, fontSize: 13, outline: "none", fontFamily: "inherit", boxSizing: "border-box", cursor: "pointer" }}>
+                  {etapas.map(et => <option key={et.id} value={et.id}>{et.nome}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: 12, color: co.textMuted, marginBottom: 6, fontWeight: 500 }}>RESUMO DA QUALIFICAÇÃO</label>
+                <textarea value={editingLead.resumo || ''} onChange={e => setEditingLead(p => ({ ...p, resumo: e.target.value }))} rows={6}
+                  style={{ width: "100%", padding: "10px 14px", background: co.bgInput, border: `1px solid ${co.border}`, borderRadius: 8, color: co.text, fontSize: 13, outline: "none", fontFamily: "inherit", boxSizing: "border-box", resize: "vertical", lineHeight: 1.6 }} />
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
+              <Btn variant="ghost" onClick={() => setEditingLead(null)} style={{ flex: 1 }}>Cancelar</Btn>
+              <Btn onClick={updateLead} disabled={savingLead} style={{ flex: 2 }}>{savingLead ? "Salvando..." : "Atualizar Lead"}</Btn>
+            </div>
           </div>
         </div>
       )}
