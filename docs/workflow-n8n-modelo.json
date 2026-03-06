@@ -10,7 +10,7 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
       "position": [
-        -2576,
+        -2880,
         -1360
       ],
       "id": "4273dbe7-c196-4583-8905-16ac611f0ddf",
@@ -24,7 +24,7 @@
             {
               "id": "9f40523e-a2c8-43af-86e1-f8829550d374",
               "name": "telefone",
-              "value": "={{ $json.body.data.key.remoteJid }}",
+              "value": "={{ $json.body.data.from }}",
               "type": "string"
             }
           ]
@@ -34,7 +34,7 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -2160,
+        -2464,
         -1360
       ],
       "id": "b9e28e55-c574-429e-b526-701b9a6391ca",
@@ -65,25 +65,25 @@
             {
               "id": "b45d250b-35cf-44c2-9db7-01acb6809188",
               "name": "mensagem",
-              "value": "={{ $('Webhook').item.json.body.data.message.conversation }}",
+              "value": "={{ $('Webhook').item.json.body.data.body }} ",
               "type": "string"
             },
             {
               "id": "c0596df2-da8a-4942-84ad-b66bf1fb4fdd",
               "name": "id",
-              "value": "={{ $('Webhook').item.json.body.data.key.id }}",
+              "value": "={{ $('Webhook').item.json.body.data.messageId }}",
               "type": "string"
             },
             {
               "id": "71bb532d-029a-48f4-afae-b6e597fe5a74",
               "name": "data_url",
-              "value": "={{ $('Webhook').item.json.body.data.message.mediaUrl ?? $('Webhook').item.json.body.data.message.audioMessage?.url ?? $('Webhook').item.json.body.data.message.imageMessage?.url ?? $('Webhook').item.json.body.data.message.documentMessage?.url }}",
+              "value": "={{ $('Webhook').item.json.body.data.mediaUrl }}",
               "type": "string"
             },
             {
               "id": "0df6015c-6763-468a-8b71-cfc72283444f",
               "name": "messageType",
-              "value": "={{ $('Webhook').item.json.body.data.messageType }}",
+              "value": "={{ $('Webhook').item.json.body.data.type }}   ",
               "type": "string"
             },
             {
@@ -132,6 +132,12 @@
               "id": "6091415b-fb1b-4920-acc0-f34982c575ce",
               "name": "agente_id",
               "value": "={{ $('BUSCAR CLIENTE').item.json.id }}  ",
+              "type": "string"
+            },
+            {
+              "id": "9a26ba38-57f4-47b1-b0aa-9eb339cc5d88",
+              "name": "uazapi_token",
+              "value": "={{ $('BUSCAR CLIENTE').item.json.uazapi_token }}",
               "type": "string"
             }
           ]
@@ -186,7 +192,7 @@
         "promptType": "define",
         "text": "={{ $('Juntar Mensagens1').item.json.textoCombinado2 }}",
         "options": {
-          "systemMessage": "={{ $('BUSCAR CLIENTE').item.json.prompt_agente }}"
+          "systemMessage": "={{ $('MONTAR PROMPT').item.json.prompt_montado }}"
         }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
@@ -214,29 +220,6 @@
         "googlePalmApi": {
           "id": "GaqnIWU5B9fHTxtp",
           "name": "Google Gemini(PaLM) Api account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "resource": "messages-api",
-        "instanceName": "={{ $('DADOS LEAD').item.json.instancia_wpp }}",
-        "remoteJid": "={{ $('DADOS LEAD').item.json.telefone }}",
-        "messageText": "={{ $json.mensagens }}",
-        "options_message": {}
-      },
-      "type": "n8n-nodes-evolution-api.evolutionApi",
-      "typeVersion": 1,
-      "position": [
-        5024,
-        -1296
-      ],
-      "id": "a18e0a3a-1700-45cd-a59e-b598f1c2df8f",
-      "name": "Enviar texto",
-      "credentials": {
-        "evolutionApi": {
-          "id": "opR0Z29CqbkxtV8p",
-          "name": "GeralEvo"
         }
       }
     },
@@ -340,8 +323,8 @@
       "type": "n8n-nodes-base.redis",
       "typeVersion": 1,
       "position": [
-        496,
-        -1536
+        528,
+        -1520
       ],
       "id": "ea21afdb-eda6-4d7f-830b-dbdf519ce1dc",
       "name": "Armazenar Texto",
@@ -568,7 +551,7 @@
           "conditions": [
             {
               "id": "e7e8838d-de46-4cbd-8fd5-b1d1905cefa9",
-              "leftValue": "={{ $json.body.data.key.fromMe }}",
+              "leftValue": "={{ $json.body.data.isFromMe }}",
               "rightValue": "",
               "operator": {
                 "type": "boolean",
@@ -584,7 +567,7 @@
       "type": "n8n-nodes-base.filter",
       "typeVersion": 2.2,
       "position": [
-        -2368,
+        -2672,
         -1360
       ],
       "id": "b4120c45-5aff-4efb-adc6-8231e88af332",
@@ -762,30 +745,6 @@
     },
     {
       "parameters": {
-        "resource": "messages-api",
-        "operation": "send-audio",
-        "instanceName": "={{ $('DADOS LEAD').item.json.instancia_wpp }}",
-        "remoteJid": "={{ $('DADOS LEAD').item.json.telefone }}",
-        "media": "={{ $('DADOS LEAD').item.json.url_audio }}",
-        "options_message": {}
-      },
-      "type": "n8n-nodes-evolution-api.evolutionApi",
-      "typeVersion": 1,
-      "position": [
-        3440,
-        -1856
-      ],
-      "id": "27f05881-cdf6-4db7-bcf4-d62068a9c2c6",
-      "name": "ÁUDIO BOAS VINDAS",
-      "credentials": {
-        "evolutionApi": {
-          "id": "opR0Z29CqbkxtV8p",
-          "name": "GeralEvo"
-        }
-      }
-    },
-    {
-      "parameters": {
         "operation": "push",
         "list": "={{ $('DADOS LEAD').item.json.telefone }}",
         "messageData": "={{ $json.text }}",
@@ -859,46 +818,6 @@
     },
     {
       "parameters": {
-        "resource": "chat-api",
-        "operation": "get-media-base64",
-        "instanceName": "={{ $('DADOS LEAD').item.json.instancia_wpp }}",
-        "messageId": "={{ $('DADOS LEAD').item.json.id }}"
-      },
-      "type": "n8n-nodes-evolution-api.evolutionApi",
-      "typeVersion": 1,
-      "position": [
-        384,
-        -1312
-      ],
-      "id": "55304709-8d25-4995-b66a-942f3fb6e87a",
-      "name": "TRANSFORMA URL EM BASE",
-      "credentials": {
-        "evolutionApi": {
-          "id": "opR0Z29CqbkxtV8p",
-          "name": "GeralEvo"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "toBinary",
-        "sourceProperty": "data.base64",
-        "options": {
-          "fileName": "audio.ogg",
-          "mimeType": "audio/ogg"
-        }
-      },
-      "type": "n8n-nodes-base.convertToFile",
-      "typeVersion": 1.1,
-      "position": [
-        560,
-        -1312
-      ],
-      "id": "02d6f61b-89b1-44ad-91b0-91e8c2c1524c",
-      "name": "CONVERTE EM ARQUIVO1"
-    },
-    {
-      "parameters": {
         "assignments": {
           "assignments": [
             {
@@ -943,143 +862,12 @@
     },
     {
       "parameters": {
-        "resource": "chat-api",
-        "operation": "get-media-base64",
-        "instanceName": "={{ $('DADOS LEAD').item.json.instancia_wpp }}",
-        "messageId": "={{ $('DADOS LEAD').item.json.id }}"
-      },
-      "type": "n8n-nodes-evolution-api.evolutionApi",
-      "typeVersion": 1,
-      "position": [
-        384,
-        -1072
-      ],
-      "id": "99b08610-bc64-4cdd-8743-78f2a7e5f63a",
-      "name": "TRANSFORMA URL EM BASE2",
-      "credentials": {
-        "evolutionApi": {
-          "id": "opR0Z29CqbkxtV8p",
-          "name": "GeralEvo"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "toBinary",
-        "sourceProperty": "data.base64",
-        "options": {
-          "fileName": "imagem.jpg",
-          "mimeType": "image/jpeg"
-        }
-      },
-      "type": "n8n-nodes-base.convertToFile",
-      "typeVersion": 1.1,
-      "position": [
-        576,
-        -1072
-      ],
-      "id": "6e0d03d4-9dd9-4c28-b1c0-e676c8150e7e",
-      "name": "CONVERTE EM ARQUIVO2"
-    },
-    {
-      "parameters": {
-        "operation": "append",
-        "documentId": {
-          "__rl": true,
-          "value": "={{ $('DADOS LEAD').item.json.url_planilha }}",
-          "mode": "url"
-        },
-        "sheetName": {
-          "__rl": true,
-          "value": "gid=0",
-          "mode": "list",
-          "cachedResultName": "Leads",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1BE21O93ewshWe8jySlObOnJtCuANHN_vhISVOUIzYLY/edit#gid=0"
-        },
-        "columns": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "Data": "={{ $('FORMATAR TELEFONE E DATA').item.json.data_formatada }}",
-            "Telefone": "={{ $('DADOS LEAD').item.json.telefone }}",
-            "Nome": "={{ $('DADOS LEAD').item.json.nome }}",
-            "Status": "Atendimento (IA)"
-          },
-          "matchingColumns": [],
-          "schema": [
-            {
-              "id": "Data",
-              "displayName": "Data",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "Telefone",
-              "displayName": "Telefone",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "Nome",
-              "displayName": "Nome",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "Status",
-              "displayName": "Status",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "Resumo",
-              "displayName": "Resumo",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            }
-          ],
-          "attemptToConvertTypes": false,
-          "convertFieldsToString": false
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.7,
-      "position": [
-        3344,
-        -1568
-      ],
-      "id": "65242091-7433-4465-8fb1-2f252c245b23",
-      "name": "ADICIONAR NA PLANILHA",
-      "credentials": {
-        "googleSheetsOAuth2Api": {
-          "id": "oyo37wSpvd55r4lu",
-          "name": "Google Sheets Jose"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "function normalizarTelefone(input) {\n  if (!input) return null;\n  let numero = String(input).replace(/\\D/g, '');\n  if (numero.startsWith('5555')) {\n    numero = numero.replace(/^555+/, '55');\n  }\n  if (numero.startsWith('55')) {\n    numero = numero.slice(2);\n  }\n  if (numero.length < 10 || numero.length > 11) {\n    return null;\n  }\n  const ddd = numero.slice(0, 2);\n  let telefone = numero.slice(2);\n  if (telefone.length === 8) {\n    telefone = '9' + telefone;\n  }\n  if (!telefone.startsWith('9')) {\n    telefone = '9' + telefone.slice(1);\n  }\n  const telefoneFinal = `55${ddd}${telefone}`;\n  if (telefoneFinal.length !== 13) {\n    return null;\n  }\n  return telefoneFinal;\n}\n\nfunction formatarData(input) {\n  if (!input) return null;\n  const data = new Date(input);\n  const dia = String(data.getDate()).padStart(2, '0');\n  const mes = String(data.getMonth() + 1).padStart(2, '0');\n  const ano = data.getFullYear();\n  return `${dia}/${mes}/${ano}`;\n}\n\nconst telefone = $input.first().json.telefone;\nconst dateTime = $input.first().json.body?.data?.date_time \n  ?? $input.first().json.date_time \n  ?? new Date().toISOString();\n\nreturn {\n  telefone_normalizado: normalizarTelefone(telefone),\n  data_formatada: formatarData(dateTime)\n};"
+        "jsCode": "function normalizarTelefone(input) {\n  if (!input) return null;\n  let numero = String(input).replace(/\\D/g, '');\n  if (numero.startsWith('5555')) {\n    numero = numero.replace(/^555+/, '55');\n  }\n  if (numero.startsWith('55')) {\n    numero = numero.slice(2);\n  }\n  if (numero.length < 10 || numero.length > 11) {\n    return null;\n  }\n  const ddd = numero.slice(0, 2);\n  let telefone = numero.slice(2);\n  if (telefone.length === 8) {\n    telefone = '9' + telefone;\n  }\n  if (!telefone.startsWith('9')) {\n    telefone = '9' + telefone.slice(1);\n  }\n  const telefoneFinal = `55${ddd}${telefone}`;\n  if (telefoneFinal.length !== 13) {\n    return null;\n  }\n  return telefoneFinal;\n}\n\nfunction formatarData(input) {\n  if (!input) return null;\n  const data = new Date(input);\n  const dia = String(data.getDate()).padStart(2, '0');\n  const mes = String(data.getMonth() + 1).padStart(2, '0');\n  const ano = data.getFullYear();\n  return `${dia}/${mes}/${ano}`;\n}\n\nconst telefone = $input.first().json.telefone;\n  const ts = $input.first().json.body?.data?.timestamp;\n  const dateTime = ts ? new Date(ts * 1000).toISOString() : new Date().toISOString();\n\nreturn {\n  telefone_normalizado: normalizarTelefone(telefone),\n  data_formatada: formatarData(dateTime)\n};"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1936,
+        -2240,
         -1360
       ],
       "id": "82bc7151-ff38-4b21-a882-3e6e0c73c23c",
@@ -1131,118 +919,10 @@
     },
     {
       "parameters": {
-        "operation": "update",
-        "documentId": {
-          "__rl": true,
-          "mode": "url",
-          "value": "={{ $('DADOS LEAD').item.json.url_planilha }}",
-          "__regex": "https:\\/\\/(?:drive|docs)\\.google\\.com(?:\\/.*|)\\/d\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)"
-        },
-        "sheetName": {
-          "__rl": true,
-          "value": "gid=0",
-          "mode": "list",
-          "cachedResultName": "Leads",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1BE21O93ewshWe8jySlObOnJtCuANHN_vhISVOUIzYLY/edit#gid=0"
-        },
-        "columns": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "Telefone": "={{ $('DADOS LEAD').item.json.telefone }}",
-            "Status": "Qualificado (Humano)",
-            "row_number": 0,
-            "Resumo": "={{ $('AI Agent1').item.json.output }}"
-          },
-          "matchingColumns": [
-            "Telefone"
-          ],
-          "schema": [
-            {
-              "id": "Data",
-              "displayName": "Data",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": true
-            },
-            {
-              "id": "Telefone",
-              "displayName": "Telefone",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "Nome",
-              "displayName": "Nome",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": true
-            },
-            {
-              "id": "Status",
-              "displayName": "Status",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "Resumo",
-              "displayName": "Resumo",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "row_number",
-              "displayName": "row_number",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "number",
-              "canBeUsedToMatch": true,
-              "readOnly": true,
-              "removed": false
-            }
-          ],
-          "attemptToConvertTypes": false,
-          "convertFieldsToString": false
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.7,
-      "position": [
-        5888,
-        -1936
-      ],
-      "id": "10de6240-c956-4076-88e0-631e96ef9e36",
-      "name": "ATUALIZAR PLANILHA",
-      "credentials": {
-        "googleSheetsOAuth2Api": {
-          "id": "oyo37wSpvd55r4lu",
-          "name": "Google Sheets Jose"
-        }
-      }
-    },
-    {
-      "parameters": {
         "promptType": "define",
         "text": "=Gere o resumo da conversa.",
         "options": {
-          "systemMessage": "={{ $('BUSCAR CLIENTE').item.json.prompt_resumo }}"
+          "systemMessage": "={{ $('MONTAR PROMPT').item.json.prompt_resumo_montado }}"
         }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
@@ -1300,7 +980,7 @@
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        6096,
+        5920,
         -1936
       ],
       "id": "d1a49481-f7a5-4f29-82d4-3e8cbb3d4a59",
@@ -1460,13 +1140,13 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "  SELECT a.*,\n    (SELECT json_agg(p ORDER BY p.ordem)                                                                                                                                                                          \n     FROM perguntas_qualificacao p                                                                                                                                                                                \n     WHERE p.agente_id = a.id AND p.ativa = true) as perguntas                                                                                                                                                    \n  FROM agentes a\n  WHERE a.instancia_wpp = '{{ $('Webhook').item.json.body.instance }}'\n  AND a.ativo = true\n  AND a.ia_ativa = true\n  LIMIT 1",
+        "query": "  SELECT a.*,                                                                                                                                                                                                        \n    c.nome_cliente,                                         \n    (SELECT json_agg(p ORDER BY p.ordem)\n     FROM perguntas_qualificacao p\n     WHERE p.agente_id = a.id AND p.ativa = true) as perguntas,\n    (SELECT STRING_AGG('Pergunta ' || p.ordem || ':' || E'\\n' || p.pergunta, E'\\n\\n' ORDER BY p.ordem)\n     FROM perguntas_qualificacao p\n     WHERE p.agente_id = a.id AND p.ativa = true) as perguntas_texto,\n    (SELECT COUNT(*)::int\n     FROM perguntas_qualificacao p\n     WHERE p.agente_id = a.id AND p.ativa = true) as num_perguntas\n  FROM agentes a\n  JOIN clientes c ON c.id = a.cliente_id\nWHERE a.instancia_wpp = '{{ $('Webhook').item.json.body.instanceId }}'  LIMIT 1",
         "options": {}
       },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        -1712,
+        -2016,
         -1360
       ],
       "id": "2d2b6838-b71d-45f0-b633-1a5fb25a3ec3",
@@ -1498,6 +1178,128 @@
           "name": "Postgres José"
         }
       }
+    },
+    {
+      "parameters": {
+        "jsCode": "  const dados = $('BUSCAR CLIENTE').item.json;\n\n  const saudacao = dados.frase_saudacao || '';\n  const encerramento = dados.frase_encerramento || '';\n  const perguntas = dados.perguntas_texto || '';\n  const nomeEscritorio = dados.nome_cliente || '';\n  const numPerguntas = String(dados.num_perguntas || 0);\n\n  function substituir(template) {\n    return (template || '')\n      .replace(/\\{\\{SAUDACAO\\}\\}/g, saudacao)\n      .replace(/\\{\\{PERGUNTAS\\}\\}/g, perguntas)\n      .replace(/\\{\\{ENCERRAMENTO\\}\\}/g, encerramento)\n      .replace(/\\{\\{NOME_ESCRITORIO\\}\\}/g, nomeEscritorio)\n      .replace(/\\{\\{NUM_PERGUNTAS\\}\\}/g, numPerguntas);\n  }\n\n  return [{ json: {\n    ...dados,\n    prompt_montado: substituir(dados.prompt_agente),\n    prompt_resumo_montado: substituir(dados.prompt_resumo)\n  }}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1728,
+        -1360
+      ],
+      "id": "269feb20-17eb-4dfa-81c0-960c83b8e348",
+      "name": "MONTAR PROMPT"
+    },
+    {
+      "parameters": {
+        "content": "### Adicionar Áudio Link",
+        "height": 208,
+        "width": 224
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        3296,
+        -1600
+      ],
+      "typeVersion": 1,
+      "id": "0faa41a1-d9e7-449e-a4da-d1be7a775b83",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://grupoadv.uazapi.com/send/text ",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "={{ $('DADOS LEAD').item.json.uazapi_token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"phone\": \"{{ $('DADOS LEAD').item.json.telefone }}\", \"message\": \"{{ $json.mensagens }}\" }",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        4992,
+        -1296
+      ],
+      "id": "2ebd72c6-fd0b-4d77-9e87-a126a6424b27",
+      "name": "Enviar Texto"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://grupoadv.uazapi.com/send/audio  ",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "={{ $('DADOS LEAD').item.json.uazapi_token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"phone\": \"{{ $('DADOS LEAD').item.json.telefone }}\", \"url\": \"{{ $('DADOS LEAD').item.json.url_audio }}\" }",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        3360,
+        -1552
+      ],
+      "id": "90a26c09-96a7-45d0-9ccc-74220b9070c4",
+      "name": "ÁUDIO BOAS VINDAS"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('DADOS LEAD').item.json.data_url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        400,
+        -1312
+      ],
+      "id": "a65eae4d-466a-4a9b-9cf5-accd925cac5f",
+      "name": "TRANSFORMA URL EM BASE"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('DADOS LEAD').item.json.data_url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        400,
+        -1088
+      ],
+      "id": "1c09b20e-dd99-4a4b-b2a1-b251556eee45",
+      "name": "TRANSFORMA URL EM BASE2"
     }
   ],
   "pinData": {
@@ -1704,17 +1506,6 @@
         ]
       ]
     },
-    "Enviar texto": {
-      "main": [
-        [
-          {
-            "node": "Wait1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Juntar Mensagens1": {
       "main": [
         [
@@ -1795,7 +1586,7 @@
         ],
         [
           {
-            "node": "Enviar texto",
+            "node": "Enviar Texto",
             "type": "main",
             "index": 0
           }
@@ -1934,7 +1725,7 @@
       "main": [
         [
           {
-            "node": "ADICIONAR NA PLANILHA",
+            "node": "ÁUDIO BOAS VINDAS",
             "type": "main",
             "index": 0
           }
@@ -1946,11 +1737,6 @@
             "index": 0
           }
         ]
-      ]
-    },
-    "ÁUDIO BOAS VINDAS": {
-      "main": [
-        []
       ]
     },
     "Armazena Áudio": {
@@ -1986,28 +1772,6 @@
         ]
       ]
     },
-    "TRANSFORMA URL EM BASE": {
-      "main": [
-        [
-          {
-            "node": "CONVERTE EM ARQUIVO1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "CONVERTE EM ARQUIVO1": {
-      "main": [
-        [
-          {
-            "node": "Transcribe a recording",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "RENOMEIA CAMPO3": {
       "main": [
         [
@@ -2024,39 +1788,6 @@
         [
           {
             "node": "RENOMEIA CAMPO3",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "TRANSFORMA URL EM BASE2": {
-      "main": [
-        [
-          {
-            "node": "CONVERTE EM ARQUIVO2",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "CONVERTE EM ARQUIVO2": {
-      "main": [
-        [
-          {
-            "node": "Analizar Imagem",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "ADICIONAR NA PLANILHA": {
-      "main": [
-        [
-          {
-            "node": "AI Agent",
             "type": "main",
             "index": 0
           }
@@ -2119,17 +1850,6 @@
         [
           {
             "node": "SALVAR RESUMO",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "ATUALIZAR PLANILHA": {
-      "main": [
-        [
-          {
-            "node": "No Operation, do nothing2",
             "type": "main",
             "index": 0
           }
@@ -2216,7 +1936,7 @@
       "main": [
         [
           {
-            "node": "DADOS LEAD",
+            "node": "MONTAR PROMPT",
             "type": "main",
             "index": 0
           }
@@ -2227,7 +1947,62 @@
       "main": [
         [
           {
-            "node": "ATUALIZAR PLANILHA",
+            "node": "No Operation, do nothing2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MONTAR PROMPT": {
+      "main": [
+        [
+          {
+            "node": "DADOS LEAD",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar Texto": {
+      "main": [
+        [
+          {
+            "node": "Wait1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ÁUDIO BOAS VINDAS": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TRANSFORMA URL EM BASE": {
+      "main": [
+        [
+          {
+            "node": "Transcribe a recording",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TRANSFORMA URL EM BASE2": {
+      "main": [
+        [
+          {
+            "node": "Analizar Imagem",
             "type": "main",
             "index": 0
           }
@@ -2245,7 +2020,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "974e549d-3c91-4b3a-830a-ab243f8f04f9",
+  "versionId": "4dbc1219-05b9-456d-8a80-722c63fbd4fe",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "804c00b1e5188d906bae124422d170cfebea2fae250a07ce077882d6fad45087"

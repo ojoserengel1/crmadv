@@ -455,6 +455,14 @@ function ConfigView({ clienteId }) {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
+  // WhatsApp / UazAPI states
+  const [wppPhase, setWppPhase] = useState('idle') // 'idle' | 'connecting' | 'scanning' | 'disconnected'
+  const [wppQr, setWppQr] = useState(null)
+  const [wppError, setWppError] = useState(null)
+  const [wppDisconnecting, setWppDisconnecting] = useState(false)
+  const [wppRealConnected, setWppRealConnected] = useState(null) // null=checking | true | false
+  const wppPollRef = useRef(null)
+
   useEffect(() => {
     if (!clienteId) return
     supabase.from('agentes').select('*').eq('cliente_id', clienteId).order('created_at')
@@ -497,6 +505,111 @@ function ConfigView({ clienteId }) {
     setTimeout(() => setSaved(false), 2000)
   }
 
+  // Quando muda de agente, resetar e verificar status real com UazAPI
+  useEffect(() => {
+    setWppPhase('idle')
+    setWppQr(null)
+    setWppError(null)
+    setWppRealConnected(null)
+    if (wppPollRef.current) { clearInterval(wppPollRef.current); wppPollRef.current = null }
+
+    if (!activeAgente) return
+    const a = agenteConfigs[activeAgente]
+    if (!a?.uazapi_instance_id) return
+
+    // Tem instância — verificar se realmente conectado
+    setWppRealConnected(null) // checking
+    fetch(`/api/whatsapp/status?agenteId=${activeAgente}`)
+      .then(r => r.json())
+      .then(d => setWppRealConnected(d.connected === true))
+      .catch(() => setWppRealConnected(false))
+  }, [activeAgente])
+
+  // Cleanup ao desmontar
+  useEffect(() => {
+    return () => { if (wppPollRef.current) clearInterval(wppPollRef.current) }
+  }, [])
+
+  const startWppPoll = (agenteId) => {
+    if (wppPollRef.current) clearInterval(wppPollRef.current)
+    wppPollRef.current = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/whatsapp/qrcode?agenteId=${agenteId}`)
+        const data = await res.json()
+        if (data.connected) {
+          clearInterval(wppPollRef.current)
+          wppPollRef.current = null
+          setWppPhase('idle')
+          setWppQr(null)
+          setWppRealConnected(true)
+          // Recarregar dados do agente
+          const { data: updated } = await supabase.from('agentes').select('*').eq('id', agenteId).single()
+          if (updated) setAgenteConfigs(prev => ({ ...prev, [agenteId]: updated }))
+        } else if (data.qrCode) {
+          setWppQr(data.qrCode)
+        }
+      } catch (_) {}
+    }, 5000)
+  }
+
+  const conectarWhatsApp = async () => {
+    setWppPhase('connecting')
+    setWppError(null)
+    const nomeSanitizado = (agente.nome || 'agente').toLowerCase().replace(/[^a-z0-9]/g, '-')
+    const nomeInstancia = `ia-${nomeSanitizado}-${activeAgente.substring(0, 6)}`
+    try {
+      const res = await fetch('/api/whatsapp/conectar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agenteId: activeAgente, nomeInstancia }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setWppError(data.error || 'Erro ao conectar'); setWppPhase('idle'); return }
+      if (data.qrCode) setWppQr(data.qrCode)
+      setWppPhase('scanning')
+      startWppPoll(activeAgente)
+    } catch (err) {
+      setWppError('Erro de conexão com o servidor')
+      setWppPhase('idle')
+    }
+  }
+
+  const reconectarWhatsApp = async () => {
+    setWppPhase('scanning')
+    setWppQr(null)
+    setWppError(null)
+    // Usa instância existente — chama /qrcode que aciona /instance/connect internamente
+    startWppPoll(activeAgente)
+    // Buscar QR imediato
+    try {
+      const res = await fetch(`/api/whatsapp/qrcode?agenteId=${activeAgente}`)
+      const data = await res.json()
+      if (data.connected) {
+        setWppPhase('idle')
+        setWppRealConnected(true)
+      } else if (data.qrCode) {
+        setWppQr(data.qrCode)
+      }
+    } catch (_) {}
+  }
+
+  const desconectarWhatsApp = async () => {
+    setWppDisconnecting(true)
+    try {
+      await fetch('/api/whatsapp/desconectar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agenteId: activeAgente }),
+      })
+      setAgenteConfigs(prev => ({ ...prev, [activeAgente]: { ...prev[activeAgente], uazapi_instance_id: null, uazapi_token: null, instancia_wpp: null } }))
+      setWppPhase('idle')
+      setWppRealConnected(null)
+    } catch (_) {
+      setWppError('Erro ao desconectar')
+    }
+    setWppDisconnecting(false)
+  }
+
   return (
     <div style={{ padding: 28, overflowY: "auto", height: "100vh", boxSizing: "border-box" }}>
       <div style={{ marginBottom: 24 }}>
@@ -524,21 +637,83 @@ function ConfigView({ clienteId }) {
       </div>
 
       <div style={{ maxWidth: 700 }}>
-        {activeSection === "whatsapp" && (
-          <div style={{ background: co.bgCard, borderRadius: 12, border: `1px solid ${co.border}`, padding: 28, textAlign: "center" }}>
-            {agente.instancia_wpp ? (<>
-              <div style={{ width: 64, height: 64, borderRadius: "50%", background: co.successBg, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", fontSize: 28 }}>✓</div>
-              <h3 style={{ color: co.success, fontSize: 16, fontWeight: 600, margin: "0 0 6px" }}>Conectado</h3>
-              <p style={{ color: co.textMuted, fontSize: 13, margin: "0 0 4px" }}>Instância: {agente.instancia_wpp}</p>
-              <p style={{ color: co.textDim, fontSize: 12, margin: "0 0 20px" }}>I.A: {agente.nome}</p>
-              <Btn variant="danger" size="sm">Desconectar</Btn>
-            </>) : (<>
-              <div style={{ width: 200, height: 200, background: co.bg, borderRadius: 12, border: `1px solid ${co.border}`, margin: "0 auto 16px", display: "flex", alignItems: "center", justifyContent: "center", color: co.textDim, fontSize: 13 }}>QR Code aqui</div>
-              <h3 style={{ color: co.text, fontSize: 16, fontWeight: 600, margin: "0 0 6px" }}>Escaneie o QR Code</h3>
-              <p style={{ color: co.textMuted, fontSize: 13 }}>Abra o WhatsApp e escaneie</p>
-            </>)}
-          </div>
-        )}
+        {activeSection === "whatsapp" && (() => {
+          const hasInstance = !!agente.uazapi_instance_id
+          const isConnected = hasInstance && wppRealConnected === true
+          const isDisconnected = hasInstance && wppRealConnected === false && wppPhase === 'idle'
+          const isChecking = hasInstance && wppRealConnected === null && wppPhase === 'idle'
+
+          // Verificando status
+          if (isChecking) return (
+            <div style={{ background: co.bgCard, borderRadius: 12, border: `1px solid ${co.border}`, padding: 40, textAlign: "center" }}>
+              <div style={{ width: 64, height: 64, borderRadius: "50%", background: co.primaryBg, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", fontSize: 28 }}>⏳</div>
+              <h3 style={{ color: co.text, fontSize: 16, fontWeight: 600, margin: "0 0 8px" }}>Verificando conexão...</h3>
+            </div>
+          )
+
+          // Conectado
+          if (isConnected) return (
+            <div style={{ background: co.bgCard, borderRadius: 12, border: `1px solid ${co.border}`, padding: 28, textAlign: "center" }}>
+              <div style={{ width: 64, height: 64, borderRadius: "50%", background: co.successBg, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", fontSize: 32 }}>✓</div>
+              <h3 style={{ color: co.success, fontSize: 18, fontWeight: 700, margin: "0 0 8px" }}>WhatsApp Conectado</h3>
+              <p style={{ color: co.textMuted, fontSize: 13, margin: "0 0 4px" }}>Instância: <strong style={{ color: co.text }}>{agente.instancia_wpp}</strong></p>
+              <p style={{ color: co.textDim, fontSize: 12, margin: "0 0 24px" }}>I.A: {agente.nome}</p>
+              <Btn variant="danger" size="sm" onClick={desconectarWhatsApp} disabled={wppDisconnecting}>
+                {wppDisconnecting ? "Desconectando..." : "Desconectar"}
+              </Btn>
+            </div>
+          )
+
+          // Desconectado (tem instância mas WPP desconectado)
+          if (isDisconnected) return (
+            <div style={{ background: co.bgCard, borderRadius: 12, border: `1px solid ${co.border}`, padding: 40, textAlign: "center" }}>
+              <div style={{ width: 64, height: 64, borderRadius: "50%", background: co.warningBg, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", fontSize: 28 }}>⚠</div>
+              <h3 style={{ color: co.warning, fontSize: 17, fontWeight: 700, margin: "0 0 8px" }}>WhatsApp Desconectado</h3>
+              <p style={{ color: co.textMuted, fontSize: 13, margin: "0 0 4px" }}>Instância: <strong style={{ color: co.text }}>{agente.instancia_wpp}</strong></p>
+              <p style={{ color: co.textDim, fontSize: 12, margin: "0 0 24px" }}>Escaneie novamente para reconectar</p>
+              {wppError && <p style={{ color: co.danger, fontSize: 13, margin: "0 0 16px", padding: "8px 16px", background: co.dangerBg, borderRadius: 8 }}>{wppError}</p>}
+              <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+                <Btn onClick={reconectarWhatsApp}>Reconectar</Btn>
+                <Btn variant="ghost" size="sm" onClick={desconectarWhatsApp} disabled={wppDisconnecting}>
+                  {wppDisconnecting ? "..." : "Desconectar"}
+                </Btn>
+              </div>
+            </div>
+          )
+
+          if (wppPhase === 'connecting') return (
+            <div style={{ background: co.bgCard, borderRadius: 12, border: `1px solid ${co.border}`, padding: 40, textAlign: "center" }}>
+              <div style={{ width: 64, height: 64, borderRadius: "50%", background: co.primaryBg, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", fontSize: 28 }}>⏳</div>
+              <h3 style={{ color: co.text, fontSize: 16, fontWeight: 600, margin: "0 0 8px" }}>Criando instância...</h3>
+              <p style={{ color: co.textMuted, fontSize: 13 }}>Aguarde um momento</p>
+            </div>
+          )
+
+          if (wppPhase === 'scanning') return (
+            <div style={{ background: co.bgCard, borderRadius: 12, border: `1px solid ${co.border}`, padding: 28, textAlign: "center" }}>
+              {wppQr ? (
+                <img src={wppQr} alt="QR Code WhatsApp" style={{ width: 220, height: 220, borderRadius: 12, margin: "0 auto 20px", display: "block", border: `4px solid ${co.border}` }} />
+              ) : (
+                <div style={{ width: 220, height: 220, background: co.bg, borderRadius: 12, border: `1px solid ${co.border}`, margin: "0 auto 20px", display: "flex", alignItems: "center", justifyContent: "center", color: co.textDim, fontSize: 13 }}>Gerando QR Code...</div>
+              )}
+              <h3 style={{ color: co.text, fontSize: 16, fontWeight: 600, margin: "0 0 8px" }}>Escaneie o QR Code</h3>
+              <p style={{ color: co.textMuted, fontSize: 13, margin: "0 0 4px" }}>Abra o WhatsApp → Aparelhos conectados → Conectar aparelho</p>
+              <p style={{ color: co.textDim, fontSize: 12, margin: "0 0 20px" }}>Verificando a cada 5 segundos...</p>
+              <Btn variant="ghost" size="sm" onClick={() => { if (wppPollRef.current) { clearInterval(wppPollRef.current); wppPollRef.current = null } setWppPhase('idle'); setWppQr(null) }}>Cancelar</Btn>
+            </div>
+          )
+
+          return (
+            <div style={{ background: co.bgCard, borderRadius: 12, border: `1px solid ${co.border}`, padding: 40, textAlign: "center" }}>
+              <div style={{ width: 72, height: 72, borderRadius: "50%", background: co.bgHover, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", fontSize: 34 }}>📱</div>
+              <h3 style={{ color: co.text, fontSize: 17, fontWeight: 700, margin: "0 0 8px" }}>Conectar WhatsApp</h3>
+              <p style={{ color: co.textMuted, fontSize: 13, margin: "0 0 8px" }}>Conecte o WhatsApp da sua I.A de qualificação</p>
+              <p style={{ color: co.textDim, fontSize: 12, margin: "0 0 24px" }}>Um QR Code será gerado para escanear com o celular</p>
+              {wppError && <p style={{ color: co.danger, fontSize: 13, margin: "0 0 16px", padding: "8px 16px", background: co.dangerBg, borderRadius: 8 }}>{wppError}</p>}
+              <Btn onClick={conectarWhatsApp}>Conectar WhatsApp</Btn>
+            </div>
+          )
+        })()}
 
         {activeSection === "qualificacao" && (<>
           <div style={{ background: co.bgCard, borderRadius: 12, border: `1px solid ${co.border}`, padding: 24, marginBottom: 20 }}>
@@ -923,7 +1098,6 @@ function AdminEditorView({ cliente: initialCliente }) {
     await supabase.from('agentes').update({
       nome: cfg.nome,
       nicho: cfg.nicho || cfg.nome,
-      instancia_wpp: cfg.instancia_wpp,
       webhook_path: cfg.webhook_path,
       ativo: cfg.ativo,
       ia_ativa: cfg.ia_ativa,
@@ -978,7 +1152,34 @@ function AdminEditorView({ cliente: initialCliente }) {
         <div style={{ maxWidth: 700 }}>
           <div style={{ background: co.bgCard, borderRadius: 12, border: `1px solid ${co.border}`, padding: 24 }}>
             <Input label="NOME DA I.A / NICHO" value={agente.nome || ""} onChange={v => { updateAgente("nome", v); updateAgente("nicho", v) }} />
-            <Input label="INSTÂNCIA WHATSAPP" value={agente.instancia_wpp || ""} onChange={v => updateAgente("instancia_wpp", v)} />
+
+            {/* Seção WhatsApp — auto-gerenciada pela conexão do cliente */}
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: "block", fontSize: 12, color: co.textMuted, marginBottom: 8, fontWeight: 500, letterSpacing: "0.03em" }}>WHATSAPP / UAZAPI</label>
+              {agente.instancia_wpp ? (
+                <div style={{ background: co.bg, borderRadius: 8, border: `1px solid ${co.border}`, overflow: "hidden" }}>
+                  <div style={{ padding: "10px 14px", borderBottom: `1px solid ${co.border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <div style={{ fontSize: 10, color: co.textDim, fontWeight: 600, letterSpacing: "0.05em", marginBottom: 3 }}>INSTÂNCIA (webhook N8N)</div>
+                      <div style={{ fontSize: 13, color: co.text, fontFamily: "monospace" }}>{agente.instancia_wpp}</div>
+                    </div>
+                    <button onClick={() => navigator.clipboard.writeText(agente.instancia_wpp)} style={{ fontSize: 11, color: co.textMuted, background: co.bgCard, border: `1px solid ${co.border}`, borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontFamily: "inherit" }}>Copiar</button>
+                  </div>
+                  <div style={{ padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <div style={{ fontSize: 10, color: co.textDim, fontWeight: 600, letterSpacing: "0.05em", marginBottom: 3 }}>TOKEN (API / envio de mensagens)</div>
+                      <div style={{ fontSize: 13, color: co.text, fontFamily: "monospace", wordBreak: "break-all" }}>{agente.uazapi_token || "—"}</div>
+                    </div>
+                    {agente.uazapi_token && <button onClick={() => navigator.clipboard.writeText(agente.uazapi_token)} style={{ fontSize: 11, color: co.textMuted, background: co.bgCard, border: `1px solid ${co.border}`, borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontFamily: "inherit", flexShrink: 0, marginLeft: 12 }}>Copiar</button>}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ padding: "12px 14px", background: co.bg, borderRadius: 8, border: `1px solid ${co.border}`, color: co.textDim, fontSize: 13 }}>
+                  WhatsApp não conectado — o cliente deve conectar em <strong style={{ color: co.textMuted }}>Configurações → WhatsApp</strong>
+                </div>
+              )}
+            </div>
+
             <Input label="WEBHOOK PATH" value={agente.webhook_path || ""} onChange={v => updateAgente("webhook_path", v)} />
 
             <div style={{ display: "flex", gap: 20, margin: "16px 0" }}>
