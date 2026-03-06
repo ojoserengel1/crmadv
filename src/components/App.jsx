@@ -596,6 +596,7 @@ function ConfigView({ clienteId }) {
 // ============================================================
 function AdminClientesView({ onSelectCliente }) {
   const [clientes, setClientes] = useState([])
+  const [filtro, setFiltro] = useState('todos')
   const [loading, setLoading] = useState(true)
   const [showNovoCliente, setShowNovoCliente] = useState(false)
   const [novoForm, setNovoForm] = useState({ nome: '', nome_cliente: '', email: '', senha: '' })
@@ -606,7 +607,7 @@ function AdminClientesView({ onSelectCliente }) {
   const [erroEdit, setErroEdit] = useState('')
 
   const fetchClientes = async () => {
-    const { data } = await supabase.from('clientes').select('*, agentes(id, nome, ia_ativa)')
+    const { data } = await supabase.from('clientes').select('*, agentes(id, nome, ativo, ia_ativa)')
     setClientes(data || [])
     setLoading(false)
   }
@@ -659,12 +660,20 @@ function AdminClientesView({ onSelectCliente }) {
 
   return (
     <div style={{ padding: 28, overflowY: "auto", height: "100vh", boxSizing: "border-box" }}>
-      <div style={{ marginBottom: 28, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div><h2 style={{ color: co.text, fontSize: 20, fontWeight: 700, margin: 0 }}>Clientes</h2><p style={{ color: co.textMuted, fontSize: 13, margin: "4px 0 0" }}>{clientes.length} cliente(s)</p></div>
+      <div style={{ marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div><h2 style={{ color: co.text, fontSize: 20, fontWeight: 700, margin: 0 }}>Clientes</h2><p style={{ color: co.textMuted, fontSize: 13, margin: "4px 0 0" }}>{clientes.filter(c => filtro === 'todos' || (filtro === 'ativo' ? c.ativo : !c.ativo)).length} cliente(s)</p></div>
         <Btn size="md" onClick={() => setShowNovoCliente(true)}>+ Novo Cliente</Btn>
       </div>
+      <div style={{ display: "flex", gap: 6, marginBottom: 20 }}>
+        {['todos', 'ativo', 'desativado'].map(f => (
+          <button key={f} onClick={() => setFiltro(f)}
+            style={{ padding: "6px 16px", borderRadius: 8, border: `1px solid ${filtro === f ? co.primary : co.border}`, background: filtro === f ? co.primary : co.bgCard, color: filtro === f ? "#fff" : co.textMuted, cursor: "pointer", fontSize: 12, fontWeight: 600, fontFamily: "inherit", textTransform: "capitalize" }}>
+            {f === 'todos' ? 'Todos' : f === 'ativo' ? 'Ativos' : 'Desativados'}
+          </button>
+        ))}
+      </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {clientes.map(cl => {
+        {clientes.filter(c => filtro === 'todos' || (filtro === 'ativo' ? c.ativo : !c.ativo)).map(cl => {
           const ags = cl.agentes || []
           return (
             <div key={cl.id} onClick={() => onSelectCliente(cl)} style={{ background: co.bgCard, borderRadius: 12, border: `1px solid ${co.border}`, padding: 20, cursor: "pointer", transition: "all 0.15s" }}
@@ -675,7 +684,7 @@ function AdminClientesView({ onSelectCliente }) {
                   <h3 style={{ color: co.text, fontSize: 15, fontWeight: 600, margin: "0 0 4px" }}>{cl.nome_cliente}</h3>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     <Badge color={cl.ativo ? "success" : "danger"}>{cl.ativo ? "Ativo" : "Inativo"}</Badge>
-                    {ags.map(a => <Badge key={a.id} color={a.ia_ativa ? "purple" : "warning"}>{a.nome} {a.ia_ativa ? "ON" : "OFF"}</Badge>)}
+                    {ags.map(a => <Badge key={a.id} color={!a.ativo ? "danger" : a.ia_ativa ? "purple" : "warning"}>{a.nome} {!a.ativo ? "DESATIVADO" : a.ia_ativa ? "ON" : "OFF"}</Badge>)}
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
