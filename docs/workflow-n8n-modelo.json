@@ -1,21 +1,21 @@
 {
-  "name": "[MODELO] IA PRÉ ATENDIMENTO",
+  "name": "[Rengel Advocacia] IA Qualificação",
   "nodes": [
     {
       "parameters": {
         "httpMethod": "POST",
-        "path": "receber-mensagem-whats",
+        "path": "44d32ad6-0b39-4ac4-9427-0cb78648fa46",
         "options": {}
       },
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
       "position": [
-        -2352,
+        -2576,
         -1360
       ],
-      "id": "83db9f4b-6645-4a2d-a1b4-3a422c193272",
+      "id": "4273dbe7-c196-4583-8905-16ac611f0ddf",
       "name": "Webhook",
-      "webhookId": "874d82f1-c038-4d45-96ab-57e0642c16a0"
+      "webhookId": "44d32ad6-0b39-4ac4-9427-0cb78648fa46"
     },
     {
       "parameters": {
@@ -34,10 +34,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -1936,
+        -2160,
         -1360
       ],
-      "id": "40d3e065-ad32-4054-ba4e-777e3b51be75",
+      "id": "b9e28e55-c574-429e-b526-701b9a6391ca",
       "name": "TELEFONE"
     },
     {
@@ -47,19 +47,19 @@
             {
               "id": "0b370a0c-60cd-470c-9c99-d3816c671e40",
               "name": "cliente",
-              "value": "rengel_advocacia",
+              "value": "={{ $('BUSCAR CLIENTE').item.json.cliente_id }}",
               "type": "string"
             },
             {
               "id": "81459376-48d9-4507-978d-23b1dd6cd74c",
-              "name": "nome",
+              "name": "=nome",
               "value": "={{ $('Webhook').item.json.body.data.pushName }}",
               "type": "string"
             },
             {
               "id": "9f40523e-a2c8-43af-86e1-f8829550d374",
               "name": "telefone",
-              "value": "={{ $json.telefone_normalizado }}",
+              "value": "={{ $('FORMATAR TELEFONE E DATA').item.json.telefone_normalizado }}",
               "type": "string"
             },
             {
@@ -95,31 +95,43 @@
             {
               "id": "13b40899-5a38-497e-85f0-9cb5f40dbac6",
               "name": "instancia_wpp",
-              "value": "[José] Automações Internas",
+              "value": "={{ $('BUSCAR CLIENTE').item.json.instancia_wpp }}  ",
               "type": "string"
             },
             {
               "id": "c1344156-c4f5-48f8-a799-dba04c5d2cb4",
-              "name": "url_planilha",
-              "value": "https://docs.google.com/spreadsheets/d/1BE21O93ewshWe8jySlObOnJtCuANHN_vhISVOUIzYLY/",
+              "name": "=url_planilha",
+              "value": "={{ $('BUSCAR CLIENTE').item.json.url_planilha }}  ",
               "type": "string"
             },
             {
               "id": "74ef7236-79e9-4cd2-96fa-59caf0360ffc",
               "name": "url_audio",
-              "value": "https://pktodizycnapmevqvjtf.supabase.co/storage/v1/object/public/audios/WhatsApp%20Audio%202026-02-27%20at%2014.07.23.opus",
+              "value": "={{ $('BUSCAR CLIENTE').item.json.url_audio }} ",
               "type": "string"
             },
             {
               "id": "1232d60c-3e23-49b4-b18d-da6df3e06985",
               "name": "frase_gatilho",
-              "value": "quero mais informações sobre o benefício",
+              "value": "={{ $('BUSCAR CLIENTE').item.json.frase_gatilho }} ",
               "type": "string"
             },
             {
               "id": "e4474c8d-88fe-4ca5-8fe4-56fe239441d3",
               "name": "frase_encerramento",
-              "value": "Muito obrigado pela confiança e por me passar todas essas informações.",
+              "value": "={{ $('BUSCAR CLIENTE').item.json.frase_encerramento }}",
+              "type": "string"
+            },
+            {
+              "id": "137190e1-7537-49d9-9417-349ef53bd7fc",
+              "name": "nicho",
+              "value": "={{ $('BUSCAR CLIENTE').item.json.nicho }}",
+              "type": "string"
+            },
+            {
+              "id": "6091415b-fb1b-4920-acc0-f34982c575ce",
+              "name": "agente_id",
+              "value": "={{ $('BUSCAR CLIENTE').item.json.id }}  ",
               "type": "string"
             }
           ]
@@ -132,7 +144,7 @@
         -1504,
         -1360
       ],
-      "id": "f85891c1-cdbe-4015-9501-8af3151b6fca",
+      "id": "ac45f340-553d-432c-b3ff-860ceaaeb2b4",
       "name": "DADOS LEAD"
     },
     {
@@ -166,7 +178,7 @@
         -624,
         -1360
       ],
-      "id": "5b2d20f4-2900-4c92-a7ee-111fe4365460",
+      "id": "be13b8c4-bf32-42cb-83b8-a71f30ec6a07",
       "name": "EIXSTE OU NAO"
     },
     {
@@ -174,7 +186,7 @@
         "promptType": "define",
         "text": "={{ $('Juntar Mensagens1').item.json.textoCombinado2 }}",
         "options": {
-          "systemMessage": "=## Identidade e Papel\n\nVocê é o **Dr. José Rengel**, advogado responsável pelo escritório **Rengel Advocacia**. Você atende pessoalmente os leads que chegam pelo WhatsApp.\n\nVocê é o advogado do início ao fim. Não existe outro profissional. O atendimento e a análise são feitos por você.\n\n---\n\n## Regras de Formatação\n\nCada resposta sua será composta por **mensagens separadas por uma linha em branco**. Cada bloco separado por linha em branco será enviado como uma mensagem individual no WhatsApp.\n\n- Cada bloco deve ter sentido completo sozinho.\n- NUNCA quebre uma frase no meio entre dois blocos.\n- Mensagens curtas e naturais, como no WhatsApp.\n\n---\n\n## Regras de Comportamento\n\n- Linguagem simples, direta e acessível. Sem juridiquês.\n- Fale sempre em primeira pessoa: \"eu\", \"meu\", \"vou\".\n- NUNCA pergunte qual benefício a pessoa quer ou tem interesse. Você identifica internamente.\n- Envie APENAS UMA pergunta por resposta. Aguarde a resposta antes de enviar a próxima.\n- NÃO use frases de concordância, validação ou comentários entre as perguntas. Nada de \"Certo, fulano\", \"Entendi\", \"Isso é importante para a análise\", \"Ter documentação é fundamental\". Vá direto à próxima pergunta assim que receber a resposta.\n- NÃO use listas, bullets, negrito ou formatação complexa.\n- NÃO dê parecer jurídico. Não diga se a pessoa \"tem direito\" ou \"vai ganhar\".\n\n---\n\n## Controle de Estado da Conversa\n\nAntes de responder QUALQUER mensagem do lead, você DEVE analisar o histórico da conversa para identificar em qual estado o atendimento se encontra. Os estados possíveis são:\n\n**ESTADO 1 — Novo lead:** Nenhuma interação anterior. Nunca recebeu a recepção.\n→ Ação: Iniciar a ETAPA 1 (Recepção).\n\n**ESTADO 2 — Recepção feita, aguardando nome/idade:** Você já enviou a recepção mas o lead ainda não respondeu com nome e idade.\n→ Ação: Aguardar a resposta. Se o lead mandou outra coisa, redirecionar para a pergunta de nome e idade.\n\n**ESTADO 3 — Qualificação em andamento:** O lead já informou nome/idade e você já fez pelo menos uma pergunta de qualificação, mas ainda NÃO completou todas as 5 perguntas.\n→ Ação: Identificar qual foi a ÚLTIMA pergunta respondida pelo lead e enviar a PRÓXIMA pergunta pendente. Não repita perguntas já respondidas. Não recomece do zero.\n\n**ESTADO 4 — Atendimento finalizado:** Todas as 5 perguntas foram respondidas E você já enviou a mensagem de encerramento (\"Muito obrigado pela confiança...\").\n→ Ação: NÃO RESPONDA NADA. Não envie nenhuma mensagem. O pré-atendimento já foi concluído. Qualquer nova mensagem do lead será tratada diretamente pelo advogado. A IA não deve mais interagir.\n\n---\n\n## Fluxo da Conversa\n\n### ETAPA 1 — Recepção\n\nQuando o lead enviar a primeira mensagem (qualquer que seja) e o estado for NOVO LEAD, responda com exatamente estas 3 mensagens:\n\n```\nTudo bem? Sou o Dr José Rengel, responsável pelo escritório Rengel Advocacia.\n\nVou te fazer algumas perguntas para entender melhor a sua situação.\n\nQual seu nome e tem quantos anos?\n```\n\nAguarde a resposta do lead.\n\n---\n\n### ETAPA 2 — Perguntas de Qualificação\n\nApós o lead responder com nome e idade, inicie as perguntas abaixo. Envie UMA por vez. NÃO comente a resposta anterior, vá direto para a próxima pergunta.\n\n**Pergunta 1:**\n```\nVocê possui alguma deficiência ou doença que impeça ou dificulte de trabalhar?\n```\n\n**Pergunta 2:**\n```\nQuantas pessoas moram com você?\n```\n\n**Pergunta 3:**\n```\nDessas pessoas, alguém trabalha ou recebe algum benefício, como aposentadoria, pensão ou auxílio?\n```\n\n**Pergunta 4:**\n```\nQual a renda total da família? Considerando a soma de todos que moram juntos.\n```\n\n**Pergunta 5:**\n```\nVocê já tem cadastro no CadÚnico?\n```\n\nSe o lead retornar após um período de inatividade (minutos, horas ou dias), analise o histórico, identifique a última pergunta que foi RESPONDIDA e envie a próxima pergunta pendente. Não repita perguntas já respondidas. Não reinicie o fluxo. Não faça comentários sobre o tempo que passou.\n\n---\n\n### ETAPA 3 — Encerramento\n\nApós receber a resposta da Pergunta 5, envie exatamente esta mensagem:\n\n```\nMuito obrigado pela confiança e por me passar todas essas informações. Vou analisar o seu caso pessoalmente com bastante atenção. Já lhe passo retorno.\n```\n\nA partir deste momento, o atendimento está FINALIZADO. A IA NÃO deve enviar mais nenhuma mensagem nesta conversa, independentemente do que o lead enviar depois.\n\n---\n\n### ETAPA 4 — Resumo Interno (NÃO enviar ao lead)\n\nApós o encerramento, gere internamente:\n\n```\nRESUMO DO CASO — Rengel Advocacia\nNome: [nome]\nIdade: [idade]\nDeficiência/doença: [resposta pergunta 1]\nPessoas na casa: [resposta pergunta 2]\nAlguém trabalha/recebe benefício: [resposta pergunta 3]\nRenda total da família: [resposta pergunta 4]\nCadastro no CadÚnico: [resposta pergunta 5]\nData/hora: [timestamp]\n```\n\n---\n\n## Situações Especiais\n\nSe o lead perguntar algo fora do fluxo (preço, se tem direito, se é robô, etc.), responda de forma breve e redirecione para a próxima pergunta pendente:\n\n- **Pergunta sobre direito/resultado:** \"Preciso primeiro entender a sua situação completa para te dar um retorno seguro.\"\n- **Pergunta sobre preço:** \"Essa conversa inicial é sem compromisso. A questão dos honorários a gente trata depois da análise.\"\n- **Pergunta se é robô:** \"Aqui é o Dr. José Rengel. Uso esse canal para agilizar o atendimento.\"\n- **Lead foge do assunto:** Redirecione para a próxima pergunta pendente sem comentários extras.\n- **Lead não sabe responder:** Registre \"Não informado\" e siga para a próxima pergunta.\n\nApós a resposta breve, envie a próxima pergunta pendente normalmente.\n\nIMPORTANTE: Nenhuma situação especial se aplica ao ESTADO 4 (atendimento finalizado). Se o atendimento já foi finalizado, NÃO responda nada, nem situações especiais."
+          "systemMessage": "={{ $('BUSCAR CLIENTE').item.json.prompt_agente }}"
         }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
@@ -183,7 +195,7 @@
         3648,
         -1392
       ],
-      "id": "d29034b4-9f59-4659-a2d3-36783e2ae748",
+      "id": "fa8c8492-87cd-486d-8e7c-613f2eba7811",
       "name": "AI Agent"
     },
     {
@@ -196,7 +208,7 @@
         3568,
         -1088
       ],
-      "id": "bcec04d2-0418-4ac5-afe2-b0d84f13c67f",
+      "id": "a7a7dee1-9da9-4f17-b98f-b5da8e2259a8",
       "name": "API - IA QUALIFICACAO - ADV",
       "credentials": {
         "googlePalmApi": {
@@ -219,7 +231,7 @@
         5024,
         -1296
       ],
-      "id": "702a7802-b910-45bb-aa25-fa0612032073",
+      "id": "a18e0a3a-1700-45cd-a59e-b598f1c2df8f",
       "name": "Enviar texto",
       "credentials": {
         "evolutionApi": {
@@ -315,7 +327,7 @@
         80,
         -1360
       ],
-      "id": "397d1ee0-8f24-4a73-bf39-e1b6c85b059e",
+      "id": "7bd6821f-a23f-477e-a535-22ae96c4176d",
       "name": "Switch1"
     },
     {
@@ -331,7 +343,7 @@
         496,
         -1536
       ],
-      "id": "7cb5575e-3536-47d7-aaab-2189f0303bd4",
+      "id": "ea21afdb-eda6-4d7f-830b-dbdf519ce1dc",
       "name": "Armazenar Texto",
       "credentials": {
         "redis": {
@@ -354,7 +366,7 @@
         1536,
         -1392
       ],
-      "id": "88270b69-54a2-43c2-83b2-af528b020645",
+      "id": "68b8d5e7-b535-4f3e-b6db-a5ebb6e75bb0",
       "name": "Pegar Mensagem ",
       "credentials": {
         "redis": {
@@ -373,7 +385,7 @@
         2112,
         -1392
       ],
-      "id": "06fd6849-ea76-49d6-9f2d-c85aa128133e",
+      "id": "3f47c4ec-fbec-4913-8ea9-2a1138bb3393",
       "name": "Juntar Mensagens1"
     },
     {
@@ -386,9 +398,9 @@
         1728,
         -1392
       ],
-      "id": "a54f929d-72b0-4197-9047-5015297cd45c",
+      "id": "724ff8de-42b9-4122-af31-2c0cb9f492e9",
       "name": "Delay",
-      "webhookId": "0dc38cd2-ae76-4980-83bf-2714760c2000"
+      "webhookId": "df0f3099-cd9c-48ff-8b70-104bfc7d996f"
     },
     {
       "parameters": {
@@ -400,7 +412,7 @@
         4832,
         -1392
       ],
-      "id": "27705fb4-e86d-44a7-8e7d-42c1c88f67b1",
+      "id": "693048e2-cb1e-43f2-896c-5c9985edf5ba",
       "name": "Loop Over Items"
     },
     {
@@ -414,7 +426,7 @@
         4624,
         -1392
       ],
-      "id": "2f32b0fa-7115-4f66-82a6-da18e4ead0d5",
+      "id": "9dba036d-6588-40cd-82b2-35f61ed55c8f",
       "name": "Split Out",
       "notes": "TEMPLATE DESENVOLVIDO POR NOCODE STARTUP\nhttps://nocodestartup.io/\n\nFORMAÇÃO GESTOR DE AGENTES DE IA:\nhttps://nocodestartup.io/formacao-gestor-agentes-ia/"
     },
@@ -429,7 +441,7 @@
         3984,
         -1392
       ],
-      "id": "bcd5f4d7-6e61-4604-8f63-1e5b37e13219",
+      "id": "08cb5d06-a0ae-4fab-b228-84ed40ba93a3",
       "name": "Redis",
       "credentials": {
         "redis": {
@@ -448,7 +460,7 @@
         4416,
         -1392
       ],
-      "id": "7e1aa1cb-7781-483a-900a-dae0d4561b78",
+      "id": "f14db769-67d5-4f2f-94fc-e862d83abb7d",
       "name": "Code in JavaScript1"
     },
     {
@@ -465,7 +477,7 @@
         1904,
         -1392
       ],
-      "id": "69efdc9d-7350-4045-bacd-9cb84b6f0cd7",
+      "id": "0bc21a5a-e868-4e69-b62f-2fd2be79e843",
       "name": "Pegar Mensagem 1",
       "credentials": {
         "redis": {
@@ -505,7 +517,7 @@
         2304,
         -1392
       ],
-      "id": "cd39d9c1-3713-419a-8091-d09f23f0d8c5",
+      "id": "6c416b7b-cc07-4c31-a191-5281c928d83f",
       "name": "Verificar Combinação2"
     },
     {
@@ -521,7 +533,7 @@
         3744,
         -1152
       ],
-      "id": "ab4c5e0e-3540-42d9-abab-2817e420d48e",
+      "id": "be3dcec8-6114-4180-ba1f-965beb0aed52",
       "name": "Postgres Chat Memory",
       "credentials": {
         "postgres": {
@@ -540,9 +552,9 @@
         5168,
         -1296
       ],
-      "id": "943f2f9f-ea9b-4726-a76d-4897b63b00fe",
+      "id": "31769912-312f-42ca-a6dc-905cdfbfdff9",
       "name": "Wait1",
-      "webhookId": "117214d5-d0a8-4308-ba77-fb73abd2c564"
+      "webhookId": "715bf9d8-1bc0-44aa-b949-33c99edf6a75"
     },
     {
       "parameters": {
@@ -572,10 +584,10 @@
       "type": "n8n-nodes-base.filter",
       "typeVersion": 2.2,
       "position": [
-        -2144,
+        -2368,
         -1360
       ],
-      "id": "d900dfc9-255d-44cb-91d9-08710aa6b6be",
+      "id": "b4120c45-5aff-4efb-adc6-8231e88af332",
       "name": "Filter"
     },
     {
@@ -589,7 +601,7 @@
         -2176,
         -2784
       ],
-      "id": "f5dc7d36-4f3d-48f7-b40f-7eacea4d0362",
+      "id": "dd2f3a67-b2d8-4842-b4ed-100443878d10",
       "name": "APAGAR MEMÓRIA",
       "credentials": {
         "redis": {
@@ -620,7 +632,7 @@
             {
               "id": "1abb0ac9-511c-4126-a311-bb5d63b02e8d",
               "leftValue": "={{ $('DADOS LEAD').item.json.mensagem.toLowerCase().trim() }}",
-              "rightValue": "={{ $('DADOS LEAD').item.json.frase_gatilho }}",
+              "rightValue": "={{ $('DADOS LEAD').item.json.frase_gatilho.toLowerCase().trim() }}",
               "operator": {
                 "type": "string",
                 "operation": "contains"
@@ -638,7 +650,7 @@
         -1104,
         -1360
       ],
-      "id": "7bffcfd8-2325-457a-b4d1-9334e6dac506",
+      "id": "5bc655a7-62f6-46f5-8c31-db26897b86ae",
       "name": "If"
     },
     {
@@ -653,7 +665,7 @@
         -1312,
         -1360
       ],
-      "id": "04c6ba2d-9be8-4071-87b0-f9ad49c4b8f2",
+      "id": "ed61d065-e486-4d97-abe5-d9b758f6a668",
       "name": "Tem Conversa em Aberto?",
       "credentials": {
         "postgres": {
@@ -670,7 +682,7 @@
         -1056,
         -1088
       ],
-      "id": "e60c934b-ac1e-418f-85eb-ebd25b8d92c0",
+      "id": "d799c114-13c1-46ce-a294-8329a9eb0116",
       "name": "No Operation, do nothing"
     },
     {
@@ -684,7 +696,7 @@
         -2496,
         -2784
       ],
-      "id": "b2368c85-2dc5-4a9d-b906-02c39dedc868",
+      "id": "1988ad4b-7c92-4768-81dc-53af1e1a1867",
       "name": "APAGAR MEMÓRIA1",
       "credentials": {
         "redis": {
@@ -705,7 +717,7 @@
         2928,
         -1392
       ],
-      "id": "38e45f6c-4eb6-467a-876e-f7e4ee20be84",
+      "id": "c0d25bd8-9aa9-4ccd-9ae7-9da43e9306ba",
       "name": "Tem Conversa em Aberto?1",
       "credentials": {
         "postgres": {
@@ -745,7 +757,7 @@
         3072,
         -1392
       ],
-      "id": "f0a51e4b-0d60-4ef1-b89d-c7f5900b146a",
+      "id": "827530fa-85b4-4676-a1af-c9530c411193",
       "name": "If1"
     },
     {
@@ -760,10 +772,10 @@
       "type": "n8n-nodes-evolution-api.evolutionApi",
       "typeVersion": 1,
       "position": [
-        3424,
-        -1600
+        3440,
+        -1856
       ],
-      "id": "7684611f-d5f0-4426-91ad-80ad8abf496c",
+      "id": "27f05881-cdf6-4db7-bcf4-d62068a9c2c6",
       "name": "ÁUDIO BOAS VINDAS",
       "credentials": {
         "evolutionApi": {
@@ -785,7 +797,7 @@
         1152,
         -1312
       ],
-      "id": "58612b9b-2f6f-4953-9f00-65ae427d731e",
+      "id": "4f50f6cf-4456-4cd6-8fed-29a3a78deed5",
       "name": "Armazena Áudio",
       "credentials": {
         "redis": {
@@ -814,7 +826,7 @@
         768,
         -1072
       ],
-      "id": "7212dcb7-6824-48bf-9173-1e3c95cc3559",
+      "id": "ca4a1330-7d9d-441b-817e-77f0664320dc",
       "name": "Analizar Imagem",
       "credentials": {
         "openAiApi": {
@@ -836,7 +848,7 @@
         960,
         -1072
       ],
-      "id": "b143cb1b-59b6-48a2-8838-b617e44a5276",
+      "id": "b42db225-f522-4c98-943c-f591c3238610",
       "name": "Armazena Imagem",
       "credentials": {
         "redis": {
@@ -858,7 +870,7 @@
         384,
         -1312
       ],
-      "id": "a3b3b250-4c76-4845-a316-e0e443e42706",
+      "id": "55304709-8d25-4995-b66a-942f3fb6e87a",
       "name": "TRANSFORMA URL EM BASE",
       "credentials": {
         "evolutionApi": {
@@ -882,7 +894,7 @@
         560,
         -1312
       ],
-      "id": "e9e28393-a8f2-4663-bca2-0f1f6f7f37e1",
+      "id": "02d6f61b-89b1-44ad-91b0-91e8c2c1524c",
       "name": "CONVERTE EM ARQUIVO1"
     },
     {
@@ -905,7 +917,7 @@
         944,
         -1312
       ],
-      "id": "837cac3c-ed5b-4b47-81e1-9cb05a5cc1f7",
+      "id": "df4561a4-c429-4c95-b0d6-5feab63d4f07",
       "name": "RENOMEIA CAMPO3"
     },
     {
@@ -920,7 +932,7 @@
         752,
         -1312
       ],
-      "id": "71a13ac5-d4d4-4751-9b56-bfc43cbc6c0b",
+      "id": "eea70106-cec4-449a-a310-323ebdcced70",
       "name": "Transcribe a recording",
       "credentials": {
         "openAiApi": {
@@ -942,7 +954,7 @@
         384,
         -1072
       ],
-      "id": "20723ee2-b202-4df2-8ca3-ae061cfe61b1",
+      "id": "99b08610-bc64-4cdd-8743-78f2a7e5f63a",
       "name": "TRANSFORMA URL EM BASE2",
       "credentials": {
         "evolutionApi": {
@@ -966,7 +978,7 @@
         576,
         -1072
       ],
-      "id": "2dda0431-c3da-4557-b6fe-514756a8fd67",
+      "id": "6e0d03d4-9dd9-4c28-b1c0-e676c8150e7e",
       "name": "CONVERTE EM ARQUIVO2"
     },
     {
@@ -987,7 +999,7 @@
         "columns": {
           "mappingMode": "defineBelow",
           "value": {
-            "Data": "={{ $('DADOS LEAD').item.json.data }}",
+            "Data": "={{ $('FORMATAR TELEFONE E DATA').item.json.data_formatada }}",
             "Telefone": "={{ $('DADOS LEAD').item.json.telefone }}",
             "Nome": "={{ $('DADOS LEAD').item.json.nome }}",
             "Status": "Atendimento (IA)"
@@ -1048,10 +1060,10 @@
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
       "position": [
-        3264,
-        -1600
+        3344,
+        -1568
       ],
-      "id": "87a53577-aca6-41d9-9a61-bce94d6ab80b",
+      "id": "65242091-7433-4465-8fb1-2f252c245b23",
       "name": "ADICIONAR NA PLANILHA",
       "credentials": {
         "googleSheetsOAuth2Api": {
@@ -1067,10 +1079,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1712,
+        -1936,
         -1360
       ],
-      "id": "fa21e78a-4517-4ab8-9c6f-915249d4538e",
+      "id": "82bc7151-ff38-4b21-a882-3e6e0c73c23c",
       "name": "FORMATAR TELEFONE E DATA"
     },
     {
@@ -1103,7 +1115,7 @@
         5040,
         -1488
       ],
-      "id": "7f2c99c7-4c23-4d4f-98e1-66c1769db914",
+      "id": "4e9c70f2-8047-4801-9d1f-53f7cca1c175",
       "name": "If2"
     },
     {
@@ -1114,7 +1126,7 @@
         5248,
         -1472
       ],
-      "id": "5ead4ed4-5f10-42a5-a40a-22a2d8645d1b",
+      "id": "5b68aa50-3bb6-49ba-865f-101560946528",
       "name": "No Operation, do nothing1"
     },
     {
@@ -1139,7 +1151,7 @@
             "Telefone": "={{ $('DADOS LEAD').item.json.telefone }}",
             "Status": "Qualificado (Humano)",
             "row_number": 0,
-            "Resumo": "={{ $json.output }}"
+            "Resumo": "={{ $('AI Agent1').item.json.output }}"
           },
           "matchingColumns": [
             "Telefone"
@@ -1213,10 +1225,10 @@
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
       "position": [
-        5696,
+        5888,
         -1936
       ],
-      "id": "ce4cb5f1-02b9-4a78-81f7-3e6cd5031f74",
+      "id": "10de6240-c956-4076-88e0-631e96ef9e36",
       "name": "ATUALIZAR PLANILHA",
       "credentials": {
         "googleSheetsOAuth2Api": {
@@ -1230,7 +1242,7 @@
         "promptType": "define",
         "text": "=Gere o resumo da conversa.",
         "options": {
-          "systemMessage": "=Você é um assistente interno do escritório Rengel Advocacia. Sua ÚNICA função é analisar o histórico da conversa e gerar um resumo estruturado.\n\nAnalise todo o histórico da conversa e extraia as informações abaixo. Retorne APENAS o resumo no formato exato abaixo, sem nenhum texto adicional:\n\nIdade: [idade informada pelo lead]\nDeficiência/doença: [resposta sobre deficiência ou doença]\nPessoas na casa: [quantidade de pessoas que moram com o lead]\nAlguém trabalha/recebe benefício: [resposta sobre trabalho ou benefícios]\nRenda total da família: [valor informado]\nCadastro no CadÚnico: [resposta sobre CadÚnico]\n\nSe alguma informação não foi respondida, coloque \"Não informado\".\nNão invente informações. Use APENAS o que foi dito na conversa.\nNão adicione nenhum texto antes ou depois do resumo."
+          "systemMessage": "={{ $('BUSCAR CLIENTE').item.json.prompt_resumo }}"
         }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
@@ -1239,7 +1251,7 @@
         5392,
         -1936
       ],
-      "id": "2aef0b72-fdcf-4c76-9096-2e0bdf9bcf25",
+      "id": "cb7e0edd-f0f2-4799-95b4-0bdf41fe26b0",
       "name": "AI Agent1"
     },
     {
@@ -1252,7 +1264,7 @@
         5376,
         -1712
       ],
-      "id": "9070a39a-9c69-4973-9f93-8a77640cbcbe",
+      "id": "7cf0e554-d2c9-4816-8482-bf067380b898",
       "name": "API - IA QUALIFICACAO - ADV1",
       "credentials": {
         "googlePalmApi": {
@@ -1274,7 +1286,7 @@
         5488,
         -1712
       ],
-      "id": "2d531df4-197d-4eca-9a92-8218ee488516",
+      "id": "6966be6d-b44a-4349-9f12-8ee0e1f60878",
       "name": "Postgres Chat Memory1",
       "credentials": {
         "postgres": {
@@ -1288,10 +1300,10 @@
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        5904,
+        6096,
         -1936
       ],
-      "id": "78d59b4b-22b4-4563-8695-5d1ebdbd51ff",
+      "id": "d1a49481-f7a5-4f29-82d4-3e8cbb3d4a59",
       "name": "No Operation, do nothing2"
     },
     {
@@ -1325,7 +1337,7 @@
         2720,
         -1392
       ],
-      "id": "86921f0a-a899-49b4-90ef-8dc541aab617",
+      "id": "7106f203-d9ad-409e-b59e-2fd6fb20d2ec",
       "name": "If3"
     },
     {
@@ -1336,7 +1348,7 @@
         2688,
         -1136
       ],
-      "id": "0100c9f5-aca9-46d9-bd70-ecf70a74e1a2",
+      "id": "2197d7ed-5bea-4411-a3c5-248dbc53cb03",
       "name": "No Operation, do nothing3"
     },
     {
@@ -1351,7 +1363,7 @@
         2512,
         -1392
       ],
-      "id": "d257574f-bf09-4586-8abe-459db4e10f01",
+      "id": "82918c19-0ac2-478c-b57f-db21188952fe",
       "name": "Lock Atômico",
       "credentials": {
         "redis": {
@@ -1372,7 +1384,7 @@
         4192,
         -1392
       ],
-      "id": "3fe501b8-80ce-4f4b-85d9-0409b5d3fc0d",
+      "id": "d9d437d5-b973-469b-9adf-53012426e8de",
       "name": "Redis1",
       "credentials": {
         "redis": {
@@ -1392,7 +1404,7 @@
         -2336,
         -2960
       ],
-      "id": "e8ce29c2-b74c-4074-946c-eb22988ef1f9",
+      "id": "6a6cfcca-8526-43c6-8db5-2980423d2f06",
       "name": "APAGAR MEMÓRIA2",
       "credentials": {
         "redis": {
@@ -1404,16 +1416,16 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT * FROM usuarios WHERE telefone = '{{ $json.telefone }}' LIMIT 1",
+        "query": "  SELECT * FROM leads\n  WHERE telefone = '{{ $json.telefone }}'\n  AND agente_id = '{{ $('BUSCAR CLIENTE').item.json.id }}'\n  LIMIT 1",
         "options": {}
       },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
         -832,
-        -1360
+        -1376
       ],
-      "id": "a5c07784-62f3-4ace-9762-02a5e413c0dd",
+      "id": "6df4d17b-f3f4-4dc7-90ac-43713c643214",
       "name": "BuscarUsuário",
       "alwaysOutputData": true,
       "credentials": {
@@ -1427,7 +1439,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO usuarios (nome, telefone, cliente)\nVALUES ('{{ $('DADOS LEAD').item.json.nome }}', '{{ $('DADOS LEAD').item.json.telefone }}', '{{ $('DADOS LEAD').item.json.cliente }}')\nON CONFLICT (telefone) DO NOTHING",
+        "query": "  INSERT INTO leads (cliente_id, agente_id, etapa_id, telefone, nome, nicho, status)\n  VALUES (\n    '{{ $('BUSCAR CLIENTE').item.json.cliente_id }}',\n    '{{ $('BUSCAR CLIENTE').item.json.id }}',\n    (SELECT id FROM etapas_funil\n     WHERE agente_id = '{{ $('BUSCAR CLIENTE').item.json.id }}'\n     ORDER BY ordem ASC LIMIT 1),\n    '{{ $('DADOS LEAD').item.json.telefone }}',\n    '{{ $('DADOS LEAD').item.json.nome }}',\n    '{{ $('BUSCAR CLIENTE').item.json.nicho }}',\n    'Atendimento (IA)'\n  )\n  ON CONFLICT (agente_id, telefone) DO UPDATE SET\n    nome = EXCLUDED.nome",
         "options": {}
       },
       "type": "n8n-nodes-base.postgres",
@@ -1436,8 +1448,50 @@
         -288,
         -1248
       ],
-      "id": "fdb69a2d-16b8-45bf-8b5c-b7ad6947c335",
+      "id": "f554b281-5ad1-4da4-90f3-1408dc826ae4",
       "name": "CriarUsuario",
+      "credentials": {
+        "postgres": {
+          "id": "toWNygO6lUq2z27A",
+          "name": "Postgres José"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "  SELECT a.*,\n    (SELECT json_agg(p ORDER BY p.ordem)                                                                                                                                                                          \n     FROM perguntas_qualificacao p                                                                                                                                                                                \n     WHERE p.agente_id = a.id AND p.ativa = true) as perguntas                                                                                                                                                    \n  FROM agentes a\n  WHERE a.instancia_wpp = '{{ $('Webhook').item.json.body.instance }}'\n  AND a.ativo = true\n  AND a.ia_ativa = true\n  LIMIT 1",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -1712,
+        -1360
+      ],
+      "id": "2d2b6838-b71d-45f0-b633-1a5fb25a3ec3",
+      "name": "BUSCAR CLIENTE",
+      "credentials": {
+        "postgres": {
+          "id": "toWNygO6lUq2z27A",
+          "name": "Postgres José"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "  UPDATE leads SET\n    resumo = '{{ $json.output }}',\n    status = 'Qualificado',\n    etapa_id = (\n      SELECT id FROM etapas_funil\n      WHERE agente_id = '{{ $('BUSCAR CLIENTE').item.json.id }}'\n      ORDER BY ordem ASC\n      OFFSET 1 LIMIT 1\n    )\n  WHERE telefone = '{{ $('DADOS LEAD').item.json.telefone }}'\n  AND agente_id = '{{ $('BUSCAR CLIENTE').item.json.id }}'",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        5712,
+        -1936
+      ],
+      "id": "3fc539ae-bb33-4f59-97b1-6be492ddf36e",
+      "name": "SALVAR RESUMO",
       "credentials": {
         "postgres": {
           "id": "toWNygO6lUq2z27A",
@@ -1896,13 +1950,7 @@
     },
     "ÁUDIO BOAS VINDAS": {
       "main": [
-        [
-          {
-            "node": "AI Agent",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Armazena Áudio": {
@@ -2008,7 +2056,7 @@
       "main": [
         [
           {
-            "node": "ÁUDIO BOAS VINDAS",
+            "node": "AI Agent",
             "type": "main",
             "index": 0
           }
@@ -2019,7 +2067,7 @@
       "main": [
         [
           {
-            "node": "DADOS LEAD",
+            "node": "BUSCAR CLIENTE",
             "type": "main",
             "index": 0
           }
@@ -2070,7 +2118,7 @@
       "main": [
         [
           {
-            "node": "ATUALIZAR PLANILHA",
+            "node": "SALVAR RESUMO",
             "type": "main",
             "index": 0
           }
@@ -2163,6 +2211,28 @@
           }
         ]
       ]
+    },
+    "BUSCAR CLIENTE": {
+      "main": [
+        [
+          {
+            "node": "DADOS LEAD",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SALVAR RESUMO": {
+      "main": [
+        [
+          {
+            "node": "ATUALIZAR PLANILHA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
@@ -2175,11 +2245,11 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "4bf50a33-539a-48be-bad0-3ecd1b394d26",
+  "versionId": "974e549d-3c91-4b3a-830a-ab243f8f04f9",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "804c00b1e5188d906bae124422d170cfebea2fae250a07ce077882d6fad45087"
   },
-  "id": "jMSjvpKSqwXXudhZ",
+  "id": "9Pkht5y46OzaGJc9",
   "tags": []
 }
