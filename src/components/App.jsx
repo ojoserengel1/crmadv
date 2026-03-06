@@ -543,7 +543,7 @@ function ConfigView({ clienteId }) {
         {activeSection === "qualificacao" && (<>
           <div style={{ background: co.bgCard, borderRadius: 12, border: `1px solid ${co.border}`, padding: 24, marginBottom: 20 }}>
             <h3 style={{ color: co.text, fontSize: 15, fontWeight: 600, margin: "0 0 20px" }}>Status da I.A — {agente.nome}</h3>
-            <Toggle value={agente.ia_ativa ?? false} onChange={v => updateAgente("ia_ativa", v)} label={`I.A ${agente.ia_ativa ? "Ativa" : "Desativada"}`} />
+            <Toggle value={agente.ia_ativa ?? false} onChange={async v => { updateAgente("ia_ativa", v); await supabase.from('agentes').update({ ia_ativa: v }).eq('id', activeAgente) }} label={`I.A ${agente.ia_ativa ? "Ativa" : "Desativada"}`} />
           </div>
 
           <div style={{ background: co.bgCard, borderRadius: 12, border: `1px solid ${co.border}`, padding: 24, marginBottom: 20 }}>
@@ -837,8 +837,8 @@ function AdminEditorView({ cliente: initialCliente }) {
             <Input label="WEBHOOK PATH" value={agente.webhook_path || ""} onChange={v => updateAgente("webhook_path", v)} />
 
             <div style={{ display: "flex", gap: 20, margin: "16px 0" }}>
-              <Toggle value={agente.ativo ?? true} onChange={v => updateAgente("ativo", v)} label="Cliente ativo" />
-              <Toggle value={agente.ia_ativa ?? false} onChange={v => updateAgente("ia_ativa", v)} label="I.A ativa" />
+              <Toggle value={agente.ativo ?? true} onChange={async v => { updateAgente("ativo", v); await supabase.from('agentes').update({ ativo: v }).eq('id', activeAgente) }} label="Cliente ativo" />
+              <Toggle value={agente.ia_ativa ?? false} onChange={async v => { updateAgente("ia_ativa", v); await supabase.from('agentes').update({ ia_ativa: v }).eq('id', activeAgente) }} label="I.A ativa" />
             </div>
 
             <div style={{ height: 1, background: co.border, margin: "20px 0" }} />
