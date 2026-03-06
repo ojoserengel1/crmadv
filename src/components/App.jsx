@@ -661,7 +661,7 @@ function AdminClientesView({ onSelectCliente }) {
   return (
     <div style={{ padding: 28, overflowY: "auto", height: "100vh", boxSizing: "border-box" }}>
       <div style={{ marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div><h2 style={{ color: co.text, fontSize: 20, fontWeight: 700, margin: 0 }}>Clientes</h2><p style={{ color: co.textMuted, fontSize: 13, margin: "4px 0 0" }}>{clientes.filter(c => filtro === 'todos' || (filtro === 'ativo' ? c.ativo : !c.ativo)).length} cliente(s)</p></div>
+        <div><h2 style={{ color: co.text, fontSize: 20, fontWeight: 700, margin: 0 }}>Clientes</h2><p style={{ color: co.textMuted, fontSize: 13, margin: "4px 0 0" }}>{clientes.filter(c => { const at = (c.agentes||[]).some(a=>a.ativo); return filtro==='todos'||(filtro==='ativo'?at:!at) }).length} cliente(s)</p></div>
         <Btn size="md" onClick={() => setShowNovoCliente(true)}>+ Novo Cliente</Btn>
       </div>
       <div style={{ display: "flex", gap: 6, marginBottom: 20 }}>
@@ -673,8 +673,12 @@ function AdminClientesView({ onSelectCliente }) {
         ))}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {clientes.filter(c => filtro === 'todos' || (filtro === 'ativo' ? c.ativo : !c.ativo)).map(cl => {
+        {clientes.filter(c => {
+          const ativo = (c.agentes || []).some(a => a.ativo)
+          return filtro === 'todos' || (filtro === 'ativo' ? ativo : !ativo)
+        }).map(cl => {
           const ags = cl.agentes || []
+          const clienteAtivo = ags.some(a => a.ativo)
           return (
             <div key={cl.id} onClick={() => onSelectCliente(cl)} style={{ background: co.bgCard, borderRadius: 12, border: `1px solid ${co.border}`, padding: 20, cursor: "pointer", transition: "all 0.15s" }}
               onMouseEnter={e => { e.currentTarget.style.borderColor = co.borderFocus }}
@@ -683,7 +687,7 @@ function AdminClientesView({ onSelectCliente }) {
                 <div>
                   <h3 style={{ color: co.text, fontSize: 15, fontWeight: 600, margin: "0 0 4px" }}>{cl.nome_cliente}</h3>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <Badge color={cl.ativo ? "success" : "danger"}>{cl.ativo ? "Ativo" : "Inativo"}</Badge>
+                    <Badge color={clienteAtivo ? "success" : "danger"}>{clienteAtivo ? "Ativo" : "Desativado"}</Badge>
                     {ags.map(a => <Badge key={a.id} color={!a.ativo ? "danger" : a.ia_ativa ? "purple" : "warning"}>{a.nome} {!a.ativo ? "DESATIVADO" : a.ia_ativa ? "ON" : "OFF"}</Badge>)}
                   </div>
                 </div>
