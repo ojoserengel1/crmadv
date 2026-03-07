@@ -68,6 +68,9 @@ export async function POST(req) {
 
     const agenteId = agente?.id || null
 
+    // fromMe=true: pode ser IA (N8N) ou operador (CRM)
+    // Se enviado via CRM, já foi salvo pelo /api/chat/enviar como 'agent'
+    // O upsert com onConflict:message_id deduplicará se message_id bater
     const type = fromMe ? 'ai' : 'human'
 
     // messageTimestamp já vem em milissegundos da UazAPI

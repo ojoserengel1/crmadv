@@ -54,11 +54,13 @@ export async function POST(req) {
       return NextResponse.json({ error: `UazAPI erro ${uazRes.status}: ${errText}` }, { status: 500 })
     }
 
-    // Tenta capturar messageid da resposta UazAPI (para deduplicar com o webhook fromMe=true)
+    // Captura messageid da resposta UazAPI (para deduplicar com o webhook fromMe=true)
+    // UazAPI retorna campo "messageid" (lowercase) na resposta do send
     let messageId = null
     try {
       const uazBody = await uazRes.json()
-      messageId = uazBody?.messageId || uazBody?.id || uazBody?.key?.id || null
+      messageId = uazBody?.messageid || uazBody?.messageId || uazBody?.id || uazBody?.key?.id || null
+      if (!messageId) console.log('[enviar] resposta UazAPI sem messageid:', JSON.stringify(uazBody))
     } catch (_) {}
 
     // Salva em chat_messages como mensagem do operador
