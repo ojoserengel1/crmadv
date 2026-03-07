@@ -106,11 +106,16 @@ export async function POST(req) {
     // URL por agente: N8N_BASE_URL/webhook/{webhook_path}
     if (!fromMe && N8N_BASE_URL && agente?.webhook_path) {
       const n8nUrl = `${N8N_BASE_URL}/webhook/${agente.webhook_path}`
-      fetch(n8nUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      }).catch(err => console.error(`[webhook] relay N8N (${agente.webhook_path}) erro:`, err.message))
+      try {
+        const n8nRes = await fetch(n8nUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        })
+        console.log(`[webhook] relay N8N (${agente.webhook_path}) status:`, n8nRes.status)
+      } catch (err) {
+        console.error(`[webhook] relay N8N (${agente.webhook_path}) erro:`, err.message)
+      }
     }
 
     return NextResponse.json({ ok: true })
