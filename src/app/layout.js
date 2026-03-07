@@ -3,6 +3,9 @@ import './globals.css'
 export const metadata = {
   title: 'Agente de Qualificação',
   description: 'CRM + IA de Qualificação para Advogados',
+  icons: {
+    icon: '/favicon.png',
+  },
 }
 
 export default function RootLayout({ children }) {
