@@ -21,6 +21,7 @@ export async function GET(req) {
 
   let messages = (rows || []).map(m => ({
     id: `db_${m.id}`,
+    messageId: m.message_id || null, // ID WhatsApp para proxy de áudio PTT
     type: m.type,
     content: m.content || '',
     mediaUrl: m.media_url || null,

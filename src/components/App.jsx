@@ -770,6 +770,129 @@ function ConfigView({ clienteId }) {
 // ADMIN — LISTA DE CLIENTES
 // ============================================================
 // ============================================================
+// PTT PLAYER — player de áudio de voz com proxy
+// ============================================================
+function PttPlayer({ messageId, agenteId, content, hostedUrl, isRight }) {
+  const [state, setState] = useState('idle') // idle | loading | playing | paused | error
+  const [progress, setProgress] = useState(0)
+  const [currentTime, setCurrentTime] = useState(0)
+  const audioRef = useRef(null)
+
+  const durMatch = content?.match(/\[ptt:(\d+)s\]/)
+  const totalSec = durMatch ? parseInt(durMatch[1]) : 0
+  const fmtTime = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
+
+  const getAudioUrl = () => {
+    if (hostedUrl) return Promise.resolve(hostedUrl)
+    // Proxy on-demand via /api/chat/audio
+    return Promise.resolve(`/api/chat/audio?messageId=${encodeURIComponent(messageId)}&agenteId=${encodeURIComponent(agenteId)}`)
+  }
+
+  const togglePlay = async () => {
+    if (state === 'playing') {
+      audioRef.current?.pause()
+      setState('paused')
+      return
+    }
+    if (state === 'paused') {
+      audioRef.current?.play()
+      setState('playing')
+      return
+    }
+    if (state === 'loading') return
+
+    setState('loading')
+    try {
+      const url = await getAudioUrl()
+      if (!audioRef.current) {
+        audioRef.current = new Audio()
+        audioRef.current.addEventListener('timeupdate', () => {
+          const cur = audioRef.current.currentTime
+          const dur = audioRef.current.duration || totalSec || 1
+          setCurrentTime(cur)
+          setProgress(cur / dur)
+        })
+        audioRef.current.addEventListener('ended', () => {
+          setState('idle')
+          setProgress(0)
+          setCurrentTime(0)
+        })
+        audioRef.current.addEventListener('error', () => setState('error'))
+      }
+      audioRef.current.src = url
+      await audioRef.current.play()
+      setState('playing')
+    } catch (e) {
+      console.error('[PttPlayer] erro:', e)
+      setState('error')
+    }
+  }
+
+  const seekTo = (e) => {
+    if (!audioRef.current) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    const pct = (e.clientX - rect.left) / rect.width
+    const dur = audioRef.current.duration || totalSec || 1
+    audioRef.current.currentTime = pct * dur
+    setProgress(pct)
+  }
+
+  useEffect(() => () => audioRef.current?.pause(), [])
+
+  const accent = isRight ? 'rgba(255,255,255,0.25)' : 'rgba(99,102,241,0.25)'
+  const accentFill = isRight ? 'rgba(255,255,255,0.85)' : '#6366F1'
+  const iconColor = isRight ? '#fff' : '#6366F1'
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 200, maxWidth: 260 }}>
+      {/* Botão play/pause */}
+      <button
+        onClick={togglePlay}
+        style={{
+          width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
+          background: accent, border: 'none', cursor: state === 'error' ? 'default' : 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 16, color: iconColor,
+        }}
+      >
+        {state === 'loading' ? '⟳' : state === 'playing' ? '⏸' : state === 'error' ? '✕' : '▶'}
+      </button>
+
+      {/* Barra de progresso + tempo */}
+      <div style={{ flex: 1 }}>
+        {/* Barra clicável */}
+        <div
+          onClick={seekTo}
+          style={{
+            height: 4, borderRadius: 2,
+            background: isRight ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.12)',
+            cursor: 'pointer', marginBottom: 4, position: 'relative',
+          }}
+        >
+          <div style={{
+            position: 'absolute', top: 0, left: 0,
+            height: '100%', borderRadius: 2,
+            background: accentFill,
+            width: `${Math.round(progress * 100)}%`,
+            transition: 'width 0.1s linear',
+          }} />
+        </div>
+        {/* Tempo atual / total */}
+        <div style={{ fontSize: 11, opacity: 0.7 }}>
+          {state === 'error'
+            ? 'indisponível'
+            : `${fmtTime(currentTime)}${totalSec ? ` / ${fmtTime(totalSec)}` : ''}`
+          }
+        </div>
+      </div>
+
+      {/* Ícone de microfone */}
+      <div style={{ fontSize: 16, opacity: 0.6, flexShrink: 0 }}>🎤</div>
+    </div>
+  )
+}
+
+// ============================================================
 // CHAT (Cliente)
 // ============================================================
 function ChatView({ clienteId }) {
@@ -1058,33 +1181,13 @@ function ChatView({ clienteId }) {
                 <div key={msg.id} style={{ display: 'flex', justifyContent: isRight ? 'flex-end' : 'flex-start' }}>
                   <div style={{ maxWidth: '68%', padding: '10px 14px', borderRadius: bubbleRadius, background: bubbleBg, border: isRight ? 'none' : `1px solid ${co.border}`, color: bubbleColor, fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                     {(mediaType === 'ptt' || mediaType === 'audio') ? (
-                      mediaUrl ? (
-                        // Áudio hospedado no Supabase → player funcional
-                        <audio controls style={{ maxWidth: 260, height: 36, display: 'block' }}>
-                          <source src={mediaUrl} type="audio/ogg" />
-                          <source src={mediaUrl} type="audio/mp4" />
-                          <source src={mediaUrl} type="audio/mpeg" />
-                        </audio>
-                      ) : (
-                        // PTT sem URL (CDN do WhatsApp usa streaming autenticado)
-                        // Exibe card de voz com duração quando disponível
-                        (() => {
-                          const durMatch = content.match(/\[ptt:(\d+)s\]/)
-                          const dur = durMatch ? parseInt(durMatch[1]) : null
-                          const min = dur ? Math.floor(dur / 60) : 0
-                          const sec = dur ? dur % 60 : 0
-                          const durStr = dur ? `${min}:${String(sec).padStart(2, '0')}` : ''
-                          return (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 160 }}>
-                              <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>🎤</div>
-                              <div style={{ flex: 1 }}>
-                                <div style={{ fontSize: 12, fontWeight: 600, opacity: 0.9 }}>Áudio de voz</div>
-                                {durStr && <div style={{ fontSize: 11, opacity: 0.65 }}>{durStr}</div>}
-                              </div>
-                            </div>
-                          )
-                        })()
-                      )
+                      <PttPlayer
+                        messageId={msg.messageId}
+                        agenteId={getAgenteId()}
+                        content={content}
+                        hostedUrl={mediaUrl?.startsWith('https://') && !mediaUrl.includes('mmg.whatsapp.net') ? mediaUrl : null}
+                        isRight={isRight}
+                      />
                     ) : mediaUrl && mediaType === 'image' ? (
                       <>
                         <img

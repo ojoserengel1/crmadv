@@ -234,12 +234,16 @@ export async function POST(req) {
       finalMediaUrl = await rehostMedia(mediaUrl, mediaType, mid, mediaKey, jpegThumbnail, mimetype)
     }
 
-    // Para PTT sem URL válida: armazena duração em content para a UI exibir o card de voz
-    const contentToSave = isPtt && !finalMediaUrl
+    // content: para PTT armazena duração; para outros armazena texto
+    const contentToSave = isPtt
       ? (audioDuration ? `[ptt:${audioDuration}s]` : '[ptt]')
       : (text || null)
 
-    // media_type é salvo mesmo sem media_url para PTT (UI usa para renderizar card de voz)
+    // media_url: para PTT guarda CDN URL original (proxy de áudio usará para tentar download)
+    //            para outros tipos usa URL do Supabase Storage (descriptografada)
+    const mediaUrlToSave = isPtt ? (mediaUrl || null) : (finalMediaUrl || null)
+
+    // media_type: sempre salvo para PTT (UI usa para renderizar card de voz)
     const mediaTypeToSave = mediaType || (finalMediaUrl ? 'media' : null)
 
     // Salva em chat_messages (message_id garante deduplicação)
@@ -250,7 +254,7 @@ export async function POST(req) {
           session_id: telefone,
           type,
           content: contentToSave,
-          media_url: finalMediaUrl || null,
+          media_url: mediaUrlToSave,
           media_type: mediaTypeToSave,
           message_id: messageid,
           created_at: createdAt,
@@ -264,7 +268,7 @@ export async function POST(req) {
         session_id: telefone,
         type,
         content: contentToSave,
-        media_url: finalMediaUrl || null,
+        media_url: mediaUrlToSave,
         media_type: mediaTypeToSave,
         created_at: createdAt,
       })
