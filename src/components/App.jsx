@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 const supabase = createClient()
@@ -784,7 +784,7 @@ function PttPlayer({ messageId, agenteId, content, hostedUrl, isRight, phoneNumb
   const waveformB64 = pttMatch?.[2] || null
 
   // Decodifica waveform base64 → array de amplitudes 0-1
-  const waveformBars = React.useMemo(() => {
+  const waveformBars = useMemo(() => {
     if (!waveformB64) return Array(20).fill(0.3)
     try {
       const bytes = Uint8Array.from(atob(waveformB64), c => c.charCodeAt(0))
