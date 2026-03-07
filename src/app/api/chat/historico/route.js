@@ -15,7 +15,7 @@ export async function GET(req) {
   // Lê de chat_messages (fonte principal — populada pelo webhook direto da UazAPI)
   const { data: rows } = await supabaseAdmin
     .from('chat_messages')
-    .select('id, session_id, type, content, media_url, media_type, created_at')
+    .select('id, session_id, type, content, media_url, media_type, message_id, created_at')
     .eq('session_id', telefone)
     .order('id', { ascending: true })
 
