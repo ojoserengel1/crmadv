@@ -1,5 +1,40 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
+import { createHmac, createDecipheriv } from 'crypto'
+
+// Descriptografa mídia do WhatsApp usando HKDF + AES-256-CBC
+// Referência: protocolo de criptografia E2E do WhatsApp
+function decryptWhatsAppMedia(encryptedBuf, mediaKeyBase64, mediaType) {
+  const mediaKey = Buffer.from(mediaKeyBase64, 'base64')
+  const infoMap = {
+    image: 'WhatsApp Image Keys',
+    video: 'WhatsApp Video Keys',
+    audio: 'WhatsApp Audio Keys',
+    ptt: 'WhatsApp Audio Keys',
+    document: 'WhatsApp Document Keys',
+  }
+  const info = Buffer.from((infoMap[mediaType] || 'WhatsApp Image Keys') + '\x00')
+  // HKDF-Extract (salt = 32 zeros)
+  const prk = createHmac('sha256', Buffer.alloc(32)).update(mediaKey).digest()
+  // HKDF-Expand: 112 bytes (IV=16, CipherKey=32, MACKey=32, RefKey=32)
+  const blocks = []
+  let prev = Buffer.alloc(0)
+  for (let i = 1; i <= 4; i++) {
+    const hmac = createHmac('sha256', prk)
+    hmac.update(prev)
+    hmac.update(info)
+    hmac.update(Buffer.from([i]))
+    prev = hmac.digest()
+    blocks.push(prev)
+  }
+  const expanded = Buffer.concat(blocks)
+  const iv = expanded.slice(0, 16)
+  const cipherKey = expanded.slice(16, 48)
+  // Arquivo criptografado = [dados AES-CBC][10 bytes MAC]
+  const encContent = encryptedBuf.slice(0, encryptedBuf.length - 10)
+  const decipher = createDecipheriv('aes-256-cbc', cipherKey, iv)
+  return Buffer.concat([decipher.update(encContent), decipher.final()])
+}
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -20,45 +55,51 @@ async function ensureBucket() {
   }
 }
 
-// Re-hospeda mídia no Supabase Storage para evitar CORS e URLs expiradas.
-// Para imagens: usa JPEGThumbnail (base64 já decodificado) pois o CDN do WhatsApp
-// serve dados criptografados. Para áudio: tenta baixar do CDN.
-async function rehostMedia(url, mediaType, messageid, base64Thumbnail = null) {
+// Re-hospeda mídia no Supabase Storage.
+// Imagens/áudio: baixa do CDN do WhatsApp e descriptografa com mediaKey.
+// Fallback: usa JPEGThumbnail se descriptografia falhar.
+async function rehostMedia(url, mediaType, messageid, mediaKey = null, jpegThumbnail = null) {
   if (!messageid) return url
   try {
     await ensureBucket()
     let buf, ct, ext
 
-    if (base64Thumbnail && mediaType === 'image') {
-      // Thumbnail JPEG já decodificado — não precisa baixar do CDN criptografado
-      buf = Buffer.from(base64Thumbnail, 'base64')
+    if (url && mediaKey) {
+      // Baixa arquivo criptografado e descriptografa com a chave E2E
+      console.log('[rehost] baixando criptografado do CDN:', url.substring(0, 60))
+      const res = await fetch(url, { signal: AbortSignal.timeout(10000) })
+      if (res.ok) {
+        const encBuf = Buffer.from(await res.arrayBuffer())
+        console.log('[rehost] enc size:', encBuf.length, 'mediaType:', mediaType)
+        try {
+          buf = decryptWhatsAppMedia(encBuf, mediaKey, mediaType)
+          ct = mediaType === 'image' ? 'image/jpeg'
+            : (mediaType === 'ptt' || mediaType === 'audio') ? 'audio/ogg'
+            : mediaType === 'video' ? 'video/mp4'
+            : 'application/octet-stream'
+          ext = mediaType === 'image' ? 'jpg'
+            : (mediaType === 'ptt' || mediaType === 'audio') ? 'ogg'
+            : mediaType === 'video' ? 'mp4'
+            : 'bin'
+          console.log('[rehost] descriptografado ok, size:', buf.length)
+        } catch (decErr) {
+          console.error('[rehost] descriptografia falhou:', decErr.message)
+          buf = null
+        }
+      } else {
+        console.error('[rehost] CDN falhou:', res.status)
+      }
+    }
+
+    // Fallback para thumbnail se descriptografia falhar
+    if (!buf && jpegThumbnail && mediaType === 'image') {
+      buf = Buffer.from(jpegThumbnail, 'base64')
       ct = 'image/jpeg'
       ext = 'jpg'
-      console.log('[rehost] usando JPEGThumbnail, size:', buf.length)
-    } else if (url) {
-      // Para áudio/outros: tenta baixar do CDN
-      console.log('[rehost] baixando do CDN:', url.substring(0, 80))
-      const res = await fetch(url, { signal: AbortSignal.timeout(9000) })
-      if (!res.ok) {
-        console.error('[rehost] CDN falhou:', res.status)
-        return url
-      }
-      const ctRaw = res.headers.get('content-type') || 'application/octet-stream'
-      ct = ctRaw === 'application/octet-stream'
-        ? (mediaType === 'ptt' || mediaType === 'audio' ? 'audio/ogg'
-          : mediaType === 'video' ? 'video/mp4'
-          : ctRaw)
-        : ctRaw
-      ext = ct.includes('ogg') ? 'ogg'
-        : ct.includes('mp3') || ct.includes('mpeg') ? 'mp3'
-        : ct.includes('mp4') ? 'mp4'
-        : mediaType === 'ptt' || mediaType === 'audio' ? 'ogg'
-        : 'bin'
-      buf = Buffer.from(await res.arrayBuffer())
-      console.log('[rehost] CDN buf size:', buf.length, 'ct:', ct)
-    } else {
-      return null
+      console.log('[rehost] fallback thumbnail, size:', buf.length)
     }
+
+    if (!buf) return url
 
     const fname = `${messageid}.${ext}`
     const { error: upErr } = await supabaseAdmin.storage
@@ -122,19 +163,9 @@ export async function POST(req) {
     const mediaType = msg.mediaType || null
     const mediaUrl = (msg.mediaUrl) ||
       (typeof msg.content === 'object' && msg.content?.URL) || null
-    // JPEGThumbnail: base64 já decodificado, disponível para imagens
+    // Campos do content para descriptografia
     const jpegThumbnail = (typeof msg.content === 'object' && msg.content?.JPEGThumbnail) || null
-
-    // Log para diagnóstico de URLs de mídia
-    if (mediaType) {
-      console.log('[webhook] mídia detectada:', JSON.stringify({
-        mediaType,
-        msgMediaUrl: msg.mediaUrl || null,
-        contentUrl: (typeof msg.content === 'object' && msg.content?.URL) ? msg.content.URL.substring(0, 60) : null,
-        hasJpegThumbnail: !!jpegThumbnail,
-        contentKeys: typeof msg.content === 'object' ? Object.keys(msg.content) : null,
-      }))
-    }
+    const mediaKey = (typeof msg.content === 'object' && msg.content?.mediaKey) || null
 
     // Para fromMe=false (lead enviou): session_id = telefone do lead (sender_pn)
     // Para fromMe=true (bot enviou): session_id = telefone do contato (chatid)
@@ -164,12 +195,11 @@ export async function POST(req) {
     const createdAt = messageTimestamp ? new Date(messageTimestamp).toISOString() : new Date().toISOString()
 
     // Re-hospeda mídia no Supabase Storage
-    // Imagens: usa JPEGThumbnail (já decodificado — CDN do WhatsApp serve dados criptografados)
-    // Áudio: tenta baixar do CDN diretamente
+    // Baixa do CDN e descriptografa com mediaKey (chave E2E), fallback para thumbnail
     let finalMediaUrl = mediaUrl
-    if (jpegThumbnail || mediaUrl) {
+    if (mediaUrl || jpegThumbnail) {
       const mid = messageid || `tmp_${Date.now()}`
-      finalMediaUrl = await rehostMedia(mediaUrl, mediaType, mid, jpegThumbnail)
+      finalMediaUrl = await rehostMedia(mediaUrl, mediaType, mid, mediaKey, jpegThumbnail)
     }
 
     // Salva em chat_messages (message_id garante deduplicação)
