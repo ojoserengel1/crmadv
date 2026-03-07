@@ -13,10 +13,11 @@ function decryptWhatsAppMedia(encryptedBuf, mediaKeyBase64, mediaType) {
     ptt: 'WhatsApp Audio Keys',
     document: 'WhatsApp Document Keys',
   }
-  const info = Buffer.from((infoMap[mediaType] || 'WhatsApp Image Keys') + '\x00')
-  // HKDF-Extract (salt = 32 zeros)
+  // RFC 5869 HKDF — sem null byte no info (compatível com baileys/whatsapp-web.js)
+  const info = Buffer.from(infoMap[mediaType] || 'WhatsApp Image Keys')
+  // HKDF-Extract: PRK = HMAC-SHA256(salt=zeros, IKM=mediaKey)
   const prk = createHmac('sha256', Buffer.alloc(32)).update(mediaKey).digest()
-  // HKDF-Expand: 112 bytes (IV=16, CipherKey=32, MACKey=32, RefKey=32)
+  // HKDF-Expand: 112 bytes
   const blocks = []
   let prev = Buffer.alloc(0)
   for (let i = 1; i <= 4; i++) {
@@ -33,7 +34,11 @@ function decryptWhatsAppMedia(encryptedBuf, mediaKeyBase64, mediaType) {
   // Arquivo criptografado = [dados AES-CBC][10 bytes MAC]
   const encContent = encryptedBuf.slice(0, encryptedBuf.length - 10)
   const decipher = createDecipheriv('aes-256-cbc', cipherKey, iv)
-  return Buffer.concat([decipher.update(encContent), decipher.final()])
+  decipher.setAutoPadding(false)
+  const dec = Buffer.concat([decipher.update(encContent), decipher.final()])
+  // Remove padding PKCS7 manual
+  const padLen = dec[dec.length - 1]
+  return dec.slice(0, dec.length - padLen)
 }
 
 const supabaseAdmin = createClient(
