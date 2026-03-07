@@ -200,6 +200,21 @@ export async function POST(req) {
     const mediaKey = (typeof msg.content === 'object' && msg.content?.mediaKey) || null
     const mimetype = (typeof msg.content === 'object' && msg.content?.mimetype) || null
 
+    // Log completo para diagnóstico de áudio
+    if (mediaType === 'ptt' || mediaType === 'audio') {
+      const msgFields = Object.keys(msg).reduce((acc, k) => {
+        if (k === 'content') return acc
+        acc[k] = msg[k]
+        return acc
+      }, {})
+      console.log('[audio-debug] msg fields:', JSON.stringify(msgFields))
+      console.log('[audio-debug] content keys:', typeof msg.content === 'object' ? Object.keys(msg.content) : msg.content)
+      if (typeof msg.content === 'object') {
+        const { JPEGThumbnail: _, ...contentNoThumb } = msg.content
+        console.log('[audio-debug] content (sem thumbnail):', JSON.stringify(contentNoThumb))
+      }
+    }
+
     // Para fromMe=false (lead enviou): session_id = telefone do lead (sender_pn)
     // Para fromMe=true (bot enviou): session_id = telefone do contato (chatid)
     const rawTelefone = fromMe ? (chatid || sender_pn || null) : (sender_pn || null)
