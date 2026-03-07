@@ -197,6 +197,7 @@ export async function POST(req) {
     const mediaKey = (typeof msg.content === 'object' && msg.content?.mediaKey) || null
     const mimetype = (typeof msg.content === 'object' && msg.content?.mimetype) || null
     const audioDuration = (typeof msg.content === 'object' && msg.content?.seconds) || null
+    const audioWaveform = (typeof msg.content === 'object' && msg.content?.waveform) || null
 
     // Para fromMe=false (lead enviou): session_id = telefone do lead (sender_pn)
     // Para fromMe=true (bot enviou): session_id = telefone do contato (chatid)
@@ -234,9 +235,10 @@ export async function POST(req) {
       finalMediaUrl = await rehostMedia(mediaUrl, mediaType, mid, mediaKey, jpegThumbnail, mimetype)
     }
 
-    // content: para PTT armazena duração; para outros armazena texto
+    // content: para PTT armazena duração + waveform; para outros armazena texto
+    // Formato: [ptt:6s:BASE64_WAVEFORM] — waveform opcional
     const contentToSave = isPtt
-      ? (audioDuration ? `[ptt:${audioDuration}s]` : '[ptt]')
+      ? `[ptt:${audioDuration || 0}s${audioWaveform ? ':' + audioWaveform : ''}]`
       : (text || null)
 
     // media_url: para PTT guarda CDN URL original (proxy de áudio usará para tentar download)

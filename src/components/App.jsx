@@ -770,40 +770,45 @@ function ConfigView({ clienteId }) {
 // ADMIN — LISTA DE CLIENTES
 // ============================================================
 // ============================================================
-// PTT PLAYER — player de áudio de voz com proxy
+// PTT PLAYER — waveform visual + proxy de áudio
 // ============================================================
-function PttPlayer({ messageId, agenteId, content, hostedUrl, isRight }) {
+function PttPlayer({ messageId, agenteId, content, hostedUrl, isRight, phoneNumber }) {
   const [state, setState] = useState('idle') // idle | loading | playing | paused | error
   const [progress, setProgress] = useState(0)
   const [currentTime, setCurrentTime] = useState(0)
   const audioRef = useRef(null)
 
-  const durMatch = content?.match(/\[ptt:(\d+)s\]/)
-  const totalSec = durMatch ? parseInt(durMatch[1]) : 0
+  // Parseia content: [ptt:6s:BASE64WAVEFORM] ou [ptt:6s]
+  const pttMatch = content?.match(/\[ptt:(\d+)s(?::([A-Za-z0-9+/=]+))?\]/)
+  const totalSec = pttMatch ? parseInt(pttMatch[1]) : 0
+  const waveformB64 = pttMatch?.[2] || null
+
+  // Decodifica waveform base64 → array de amplitudes 0-1
+  const waveformBars = React.useMemo(() => {
+    if (!waveformB64) return Array(20).fill(0.3)
+    try {
+      const bytes = Uint8Array.from(atob(waveformB64), c => c.charCodeAt(0))
+      const step = Math.max(1, Math.floor(bytes.length / 30))
+      const bars = []
+      for (let i = 0; i < bytes.length; i += step) {
+        bars.push(bytes[i] / 255)
+        if (bars.length >= 30) break
+      }
+      return bars.length > 0 ? bars : Array(20).fill(0.3)
+    } catch { return Array(20).fill(0.3) }
+  }, [waveformB64])
+
   const fmtTime = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
 
-  const getAudioUrl = () => {
-    if (hostedUrl) return Promise.resolve(hostedUrl)
-    // Proxy on-demand via /api/chat/audio
-    return Promise.resolve(`/api/chat/audio?messageId=${encodeURIComponent(messageId)}&agenteId=${encodeURIComponent(agenteId)}`)
-  }
-
   const togglePlay = async () => {
-    if (state === 'playing') {
-      audioRef.current?.pause()
-      setState('paused')
-      return
-    }
-    if (state === 'paused') {
-      audioRef.current?.play()
-      setState('playing')
-      return
-    }
+    if (state === 'error') return
+    if (state === 'playing') { audioRef.current?.pause(); setState('paused'); return }
+    if (state === 'paused') { audioRef.current?.play(); setState('playing'); return }
     if (state === 'loading') return
 
     setState('loading')
     try {
-      const url = await getAudioUrl()
+      const url = hostedUrl || `/api/chat/audio?messageId=${encodeURIComponent(messageId)}&agenteId=${encodeURIComponent(agenteId)}`
       if (!audioRef.current) {
         audioRef.current = new Audio()
         audioRef.current.addEventListener('timeupdate', () => {
@@ -812,11 +817,7 @@ function PttPlayer({ messageId, agenteId, content, hostedUrl, isRight }) {
           setCurrentTime(cur)
           setProgress(cur / dur)
         })
-        audioRef.current.addEventListener('ended', () => {
-          setState('idle')
-          setProgress(0)
-          setCurrentTime(0)
-        })
+        audioRef.current.addEventListener('ended', () => { setState('idle'); setProgress(0); setCurrentTime(0) })
         audioRef.current.addEventListener('error', () => setState('error'))
       }
       audioRef.current.src = url
@@ -829,9 +830,9 @@ function PttPlayer({ messageId, agenteId, content, hostedUrl, isRight }) {
   }
 
   const seekTo = (e) => {
-    if (!audioRef.current) return
+    if (!audioRef.current || state === 'idle' || state === 'error') return
     const rect = e.currentTarget.getBoundingClientRect()
-    const pct = (e.clientX - rect.left) / rect.width
+    const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
     const dur = audioRef.current.duration || totalSec || 1
     audioRef.current.currentTime = pct * dur
     setProgress(pct)
@@ -839,55 +840,67 @@ function PttPlayer({ messageId, agenteId, content, hostedUrl, isRight }) {
 
   useEffect(() => () => audioRef.current?.pause(), [])
 
-  const accent = isRight ? 'rgba(255,255,255,0.25)' : 'rgba(99,102,241,0.25)'
-  const accentFill = isRight ? 'rgba(255,255,255,0.85)' : '#6366F1'
-  const iconColor = isRight ? '#fff' : '#6366F1'
+  const alpha = (a) => isRight ? `rgba(255,255,255,${a})` : `rgba(99,102,241,${a})`
+  const isPlaying = state === 'playing'
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 200, maxWidth: 260 }}>
-      {/* Botão play/pause */}
-      <button
-        onClick={togglePlay}
-        style={{
-          width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
-          background: accent, border: 'none', cursor: state === 'error' ? 'default' : 'pointer',
+    <div style={{ minWidth: 220, maxWidth: 280 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        {/* Botão play/pause */}
+        <button onClick={togglePlay} style={{
+          width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
+          background: alpha(0.2), border: `1.5px solid ${alpha(0.3)}`,
+          cursor: state === 'error' ? 'default' : 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 16, color: iconColor,
-        }}
-      >
-        {state === 'loading' ? '⟳' : state === 'playing' ? '⏸' : state === 'error' ? '✕' : '▶'}
-      </button>
+          fontSize: 14, color: isRight ? '#fff' : '#6366F1', transition: 'background 0.15s',
+        }}>
+          {state === 'loading' ? '·' : isPlaying ? '⏸' : '▶'}
+        </button>
 
-      {/* Barra de progresso + tempo */}
-      <div style={{ flex: 1 }}>
-        {/* Barra clicável */}
-        <div
-          onClick={seekTo}
-          style={{
-            height: 4, borderRadius: 2,
-            background: isRight ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.12)',
-            cursor: 'pointer', marginBottom: 4, position: 'relative',
-          }}
-        >
-          <div style={{
-            position: 'absolute', top: 0, left: 0,
-            height: '100%', borderRadius: 2,
-            background: accentFill,
-            width: `${Math.round(progress * 100)}%`,
-            transition: 'width 0.1s linear',
-          }} />
+        {/* Waveform + barra de progresso */}
+        <div style={{ flex: 1, cursor: 'pointer' }} onClick={seekTo}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 1.5, height: 28, marginBottom: 3 }}>
+            {waveformBars.map((amp, i) => {
+              const filled = progress > 0 && i / waveformBars.length <= progress
+              const isActive = isPlaying && filled
+              return (
+                <div key={i} style={{
+                  width: 3, borderRadius: 2, flexShrink: 0,
+                  height: `${Math.max(18, amp * 100)}%`,
+                  background: filled ? alpha(0.9) : alpha(0.3),
+                  transition: isActive ? 'none' : 'background 0.1s',
+                }} />
+              )
+            })}
+          </div>
+          {/* Tempo */}
+          <div style={{ fontSize: 10, opacity: 0.65 }}>
+            {isPlaying || state === 'paused'
+              ? `${fmtTime(currentTime)} / ${fmtTime(totalSec)}`
+              : fmtTime(totalSec)
+            }
+          </div>
         </div>
-        {/* Tempo atual / total */}
-        <div style={{ fontSize: 11, opacity: 0.7 }}>
-          {state === 'error'
-            ? 'indisponível'
-            : `${fmtTime(currentTime)}${totalSec ? ` / ${fmtTime(totalSec)}` : ''}`
-          }
-        </div>
+
+        {/* Ícone microfone */}
+        <div style={{ fontSize: 15, opacity: 0.5, flexShrink: 0 }}>🎤</div>
       </div>
 
-      {/* Ícone de microfone */}
-      <div style={{ fontSize: 16, opacity: 0.6, flexShrink: 0 }}>🎤</div>
+      {/* Link WhatsApp quando não consegue tocar */}
+      {state === 'error' && phoneNumber && (
+        <a
+          href={`https://wa.me/${phoneNumber.replace(/\D/g, '')}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 6,
+            fontSize: 11, color: isRight ? 'rgba(255,255,255,0.8)' : '#6366F1',
+            textDecoration: 'none', opacity: 0.85,
+          }}
+        >
+          <span>↗</span> Ouvir no WhatsApp
+        </a>
+      )}
     </div>
   )
 }
@@ -1187,6 +1200,7 @@ function ChatView({ clienteId }) {
                         content={content}
                         hostedUrl={mediaUrl?.startsWith('https://') && !mediaUrl.includes('mmg.whatsapp.net') ? mediaUrl : null}
                         isRight={isRight}
+                        phoneNumber={selectedSession}
                       />
                     ) : mediaUrl && mediaType === 'image' ? (
                       <>
