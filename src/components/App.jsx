@@ -779,91 +779,240 @@ function ChatView({ clienteId }) {
   const [messages, setMessages] = useState([])
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
+  const [inputText, setInputText] = useState('')
+  const [sending, setSending] = useState(false)
+  const [recording, setRecording] = useState(false)
   const messagesEndRef = useRef(null)
+  const fileInputRef = useRef(null)
+  const mediaRecorderRef = useRef(null)
+  const audioChunksRef = useRef([])
 
+  // Refs persistem entre re-renders sem causar re-renders desnecessários
+  const leadsRef = useRef([])
+  const agenteIdsRef = useRef([])
+
+  // Carrega agentes + leads na inicialização
   useEffect(() => {
-    const load = async () => {
-      const { data: ags } = await supabase.from('agentes').select('id').eq('cliente_id', clienteId)
+    const init = async () => {
+      const { data: ags } = await supabase
+        .from('agentes')
+        .select('id, uazapi_token')
+        .eq('cliente_id', clienteId)
+
       if (!ags?.length) { setLoading(false); return }
-      const agenteIds = ags.map(a => a.id)
 
-      const { data: leadsData } = await supabase.from('leads').select('id, telefone, nome, nicho').in('agente_id', agenteIds)
+      agenteIdsRef.current = ags.map(a => a.id)
+
+      // Leads enriquecem o sidebar com nome/nicho, mas não são obrigatórios
+      const { data: leadsData } = await supabase
+        .from('leads')
+        .select('id, telefone, nome, nicho, agente_id')
+        .in('agente_id', agenteIdsRef.current)
+
+      leadsRef.current = leadsData || []
       setLeads(leadsData || [])
-      if (!leadsData?.length) { setLoading(false); return }
 
-      const telefones = [...new Set(leadsData.map(l => l.telefone).filter(Boolean))]
-      const { data: chatData } = await supabase.from('chat_memory').select('id, session_id, message').in('session_id', telefones).order('id', { ascending: false })
-
-      const sessionsMap = {}
-      for (const msg of (chatData || [])) {
-        if (!sessionsMap[msg.session_id]) sessionsMap[msg.session_id] = msg
-      }
-
-      const convs = Object.values(sessionsMap).map(last => {
-        const lead = leadsData.find(l => l.telefone === last.session_id)
-        const msg = typeof last.message === 'string' ? JSON.parse(last.message) : last.message
-        return { session_id: last.session_id, lead, lastMessage: msg, lastId: last.id }
-      }).sort((a, b) => b.lastId - a.lastId)
-
-      setConversations(convs)
+      await refreshConversas()
       setLoading(false)
     }
-    load()
+    init()
   }, [clienteId])
 
+  // Polling do sidebar a cada 5s — detecta novas mensagens/conversas via webhook
+  useEffect(() => {
+    if (loading) return
+    const interval = setInterval(refreshConversas, 5000)
+    return () => clearInterval(interval)
+  }, [loading])
+
+  // Sidebar: apenas leads cadastrados (quem usou a frase gatilho no WhatsApp)
+  // Enriquece com última mensagem de cada conversa para o preview
+  const refreshConversas = async () => {
+    const leadsData = leadsRef.current
+    if (!leadsData.length) { setConversations([]); return }
+
+    const telefones = leadsData.map(l => l.telefone).filter(Boolean)
+    if (!telefones.length) { setConversations([]); return }
+
+    // Pega última mensagem de cada lead para o preview do sidebar
+    const { data: chatData } = await supabase
+      .from('chat_messages')
+      .select('id, session_id, type, content')
+      .in('session_id', telefones)
+      .order('id', { ascending: false })
+
+    const lastMsgMap = {}
+    for (const msg of (chatData || [])) {
+      if (!lastMsgMap[msg.session_id]) lastMsgMap[msg.session_id] = msg
+    }
+
+    const convs = leadsData
+      .filter(l => l.telefone)
+      .map(lead => ({
+        session_id: lead.telefone,
+        agente_id: lead.agente_id,
+        lead,
+        lastMessage: lastMsgMap[lead.telefone]
+          ? { content: lastMsgMap[lead.telefone].content, type: lastMsgMap[lead.telefone].type }
+          : null,
+        lastId: lastMsgMap[lead.telefone]?.id || 0,
+      }))
+      .sort((a, b) => b.lastId - a.lastId)
+
+    setConversations(convs)
+  }
+
+  // Polling de mensagens da conversa selecionada (2s)
   useEffect(() => {
     if (!selectedSession) return
-    const loadMsgs = async () => {
-      const { data } = await supabase.from('chat_memory').select('id, session_id, message').eq('session_id', selectedSession).order('id', { ascending: true })
-      setMessages((data || []).map(m => ({ ...m, message: typeof m.message === 'string' ? JSON.parse(m.message) : m.message })))
-    }
-    loadMsgs()
+    let cancelled = false
 
-    const channel = supabase.channel(`chat_${selectedSession}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_memory', filter: `session_id=eq.${selectedSession}` }, (payload) => {
-        const m = payload.new
-        setMessages(prev => [...prev, { ...m, message: typeof m.message === 'string' ? JSON.parse(m.message) : m.message }])
-        setConversations(prev => prev.map(c => c.session_id === selectedSession ? { ...c, lastMessage: typeof m.message === 'string' ? JSON.parse(m.message) : m.message, lastId: m.id } : c))
-      })
-      .subscribe()
-    return () => supabase.removeChannel(channel)
+    const fetchMsgs = async () => {
+      try {
+        const res = await fetch(`/api/chat/historico?telefone=${selectedSession}`)
+        if (!res.ok || cancelled) return
+        const { messages: newMsgs } = await res.json()
+        if (cancelled || !newMsgs?.length) return
+
+        setMessages(prev => {
+          const prevIds = new Set(prev.filter(m => !String(m.id).startsWith('temp_')).map(m => m.id))
+          const hasNew = newMsgs.some(m => !prevIds.has(m.id))
+          if (!hasNew) return prev
+          const pendingTemps = prev.filter(m =>
+            String(m.id).startsWith('temp_') && !newMsgs.some(n => n.content === m.content)
+          )
+          return [...newMsgs, ...pendingTemps]
+        })
+
+        // Atualiza preview do sidebar
+        const last = newMsgs[newMsgs.length - 1]
+        setConversations(prev => prev.map(c =>
+          c.session_id === selectedSession
+            ? { ...c, lastMessage: { content: last.content, type: last.type }, lastId: last.timestamp }
+            : c
+        ))
+      } catch (e) {
+        console.error('[chat poll] erro:', e)
+      }
+    }
+
+    fetchMsgs()
+    const interval = setInterval(fetchMsgs, 2000)
+    return () => { cancelled = true; clearInterval(interval) }
   }, [selectedSession])
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
 
+  // selectedLead e selectedConv para enriquecer header e obter agente_id
   const selectedLead = leads.find(l => l.telefone === selectedSession)
-  const filtered = conversations.filter(c => (c.lead?.nome || c.session_id).toLowerCase().includes(searchQuery.toLowerCase()))
+  const selectedConv = conversations.find(c => c.session_id === selectedSession)
+  const getAgenteId = () => selectedLead?.agente_id || selectedConv?.agente_id || null
+
+  const displayName = selectedLead?.nome || selectedConv?.lead?.nome || selectedSession?.replace(/(\d{2})(\d{2})(\d{4,5})(\d{4})/, '+$1 ($2) $3-$4') || '?'
+
+  const sendMessage = async (tipo, conteudo) => {
+    const agenteId = getAgenteId()
+    if (!agenteId || !selectedSession || !conteudo) return
+
+    const tempId = `temp_${Date.now()}`
+    setMessages(prev => [...prev, { id: tempId, type: 'agent', content: conteudo, mediaUrl: tipo !== 'text' ? conteudo : null, mediaType: tipo !== 'text' ? tipo : null }])
+
+    setSending(true)
+    try {
+      const res = await fetch('/api/chat/enviar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agenteId, telefone: selectedSession, tipo, conteudo }),
+      })
+      if (!res.ok) setMessages(prev => prev.filter(m => m.id !== tempId))
+    } finally {
+      setSending(false)
+    }
+  }
+
+  const sendText = async () => {
+    const text = inputText.trim()
+    if (!text || sending) return
+    setInputText('')
+    await sendMessage('text', text)
+  }
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      audioChunksRef.current = []
+      const mr = new MediaRecorder(stream)
+      mr.ondataavailable = e => { if (e.data.size > 0) audioChunksRef.current.push(e.data) }
+      mr.start()
+      mediaRecorderRef.current = mr
+      setRecording(true)
+    } catch {
+      alert('Permissão de microfone negada.')
+    }
+  }
+
+  const stopRecording = async () => {
+    if (!mediaRecorderRef.current) return
+    setRecording(false)
+    mediaRecorderRef.current.stop()
+    mediaRecorderRef.current.stream?.getTracks().forEach(t => t.stop())
+    await new Promise(r => { mediaRecorderRef.current.onstop = r })
+    const blob = new Blob(audioChunksRef.current, { type: 'audio/ogg; codecs=opus' })
+    const fileName = `ptt_${Date.now()}.ogg`
+    const { error } = await supabase.storage.from('chat-media').upload(fileName, blob, { contentType: 'audio/ogg' })
+    if (error) { console.error('Upload áudio:', error); return }
+    const { data: pub } = supabase.storage.from('chat-media').getPublicUrl(fileName)
+    await sendMessage('ptt', pub.publicUrl)
+  }
+
+  const sendMedia = async (file) => {
+    const tipo = file.type.startsWith('image/') ? 'image' : 'document'
+    const fileName = `${tipo}_${Date.now()}_${file.name}`
+    const { error } = await supabase.storage.from('chat-media').upload(fileName, file, { contentType: file.type })
+    if (error) { console.error('Upload mídia:', error); return }
+    const { data: pub } = supabase.storage.from('chat-media').getPublicUrl(fileName)
+    await sendMessage(tipo, pub.publicUrl)
+  }
+
+  const filtered = conversations.filter(c =>
+    (c.lead?.nome || c.session_id || '').toLowerCase().includes(searchQuery.toLowerCase())
+  )
 
   if (loading) return <Loading />
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
       {/* LISTA DE CONVERSAS */}
-      <div style={{ width: 280, borderRight: `1px solid ${co.border}`, display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+      <div style={{ width: 300, borderRight: `1px solid ${co.border}`, display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
         <div style={{ padding: '20px 16px 12px', borderBottom: `1px solid ${co.border}` }}>
           <h2 style={{ color: co.text, fontSize: 16, fontWeight: 700, margin: '0 0 12px' }}>Chat</h2>
           <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Buscar conversas..."
             style={{ width: '100%', padding: '8px 12px', background: co.bgInput, border: `1px solid ${co.border}`, borderRadius: 8, color: co.text, fontSize: 12, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }} />
         </div>
         <div style={{ flex: 1, overflowY: 'auto' }}>
-          {filtered.map(conv => (
-            <div key={conv.session_id} onClick={() => setSelectedSession(conv.session_id)}
-              style={{ padding: '14px 16px', cursor: 'pointer', background: selectedSession === conv.session_id ? co.primaryBg : 'transparent', borderBottom: `1px solid ${co.border}`, transition: 'background 0.1s', borderLeft: selectedSession === conv.session_id ? `3px solid ${co.primary}` : '3px solid transparent' }}
-              onMouseEnter={e => { if (selectedSession !== conv.session_id) e.currentTarget.style.background = co.bgHover }}
-              onMouseLeave={e => { if (selectedSession !== conv.session_id) e.currentTarget.style.background = 'transparent' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
-                <span style={{ color: co.text, fontSize: 13, fontWeight: 600 }}>{conv.lead?.nome || 'Lead não cadastrado'}</span>
-                {conv.lead?.nicho && <span style={{ fontSize: 10, color: co.purple, fontWeight: 600 }}>{conv.lead.nicho}</span>}
+          {filtered.map(conv => {
+            const name = conv.lead?.nome || conv.session_id?.replace(/(\d{2})(\d{2})(\d{4,5})(\d{4})/, '+$1 ($2) $3-$4') || conv.session_id
+            const isSelected = selectedSession === conv.session_id
+            return (
+              <div key={conv.session_id} onClick={() => { setMessages([]); setSelectedSession(conv.session_id) }}
+                style={{ padding: '14px 16px', cursor: 'pointer', background: isSelected ? co.primaryBg : 'transparent', borderBottom: `1px solid ${co.border}`, transition: 'background 0.1s', borderLeft: isSelected ? `3px solid ${co.primary}` : '3px solid transparent' }}
+                onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = co.bgHover }}
+                onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
+                  <span style={{ color: co.text, fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 170 }}>{name}</span>
+                  {conv.lead?.nicho && <span style={{ fontSize: 10, color: co.purple, fontWeight: 600, flexShrink: 0 }}>{conv.lead.nicho}</span>}
+                </div>
+                <p style={{ color: co.textMuted, fontSize: 11, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {conv.lastMessage
+                    ? `${conv.lastMessage.type === 'human' ? '' : '→ '}${conv.lastMessage.content?.slice(0, 40) || ''}${(conv.lastMessage.content?.length || 0) > 40 ? '...' : ''}`
+                    : <span style={{ fontStyle: 'italic', opacity: 0.5 }}>Nenhuma mensagem</span>}
+                </p>
               </div>
-              <p style={{ color: co.textMuted, fontSize: 11, margin: '0 0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {conv.lastMessage?.content?.slice(0, 45)}{conv.lastMessage?.content?.length > 45 ? '...' : ''}
-              </p>
-              <div style={{ color: co.textDim, fontSize: 10 }}>{conv.session_id?.replace(/(\d{2})(\d{2})(\d{4,5})(\d{4})/, '+$1 ($2) $3-$4')}</div>
-            </div>
-          ))}
+            )
+          })}
           {filtered.length === 0 && (
             <div style={{ padding: 32, textAlign: 'center', color: co.textMuted, fontSize: 13 }}>
-              {conversations.length === 0 ? 'Nenhuma conversa ainda' : 'Nenhum resultado'}
+              {conversations.length === 0 ? 'Aguardando mensagens via WhatsApp...' : 'Nenhum resultado'}
             </div>
           )}
         </div>
@@ -872,42 +1021,84 @@ function ChatView({ clienteId }) {
       {/* ÁREA DE MENSAGENS */}
       {selectedSession ? (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <div style={{ padding: '16px 24px', borderBottom: `1px solid ${co.border}`, display: 'flex', alignItems: 'center', gap: 12, background: co.bgCard }}>
+          {/* HEADER */}
+          <div style={{ padding: '14px 24px', borderBottom: `1px solid ${co.border}`, display: 'flex', alignItems: 'center', gap: 12, background: co.bgCard, flexShrink: 0 }}>
             <div style={{ width: 40, height: 40, borderRadius: '50%', background: `linear-gradient(135deg, ${co.primary}, ${co.purple})`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 16, flexShrink: 0 }}>
-              {(selectedLead?.nome || '?')[0].toUpperCase()}
+              {displayName[0]?.toUpperCase() || '?'}
             </div>
-            <div>
-              <div style={{ color: co.text, fontWeight: 600, fontSize: 15 }}>{selectedLead?.nome || 'Lead não cadastrado'}</div>
-              <div style={{ color: co.textMuted, fontSize: 12 }}>{selectedSession?.replace(/(\d{2})(\d{2})(\d{4,5})(\d{4})/, '+$1 ($2) $3-$4')}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ color: co.text, fontWeight: 600, fontSize: 15 }}>{displayName}</div>
+              <div style={{ color: co.textMuted, fontSize: 11 }}>{selectedSession?.replace(/(\d{2})(\d{2})(\d{4,5})(\d{4})/, '+$1 ($2) $3-$4')}</div>
             </div>
-            {selectedLead?.nicho && <Badge color="purple">{selectedLead.nicho}</Badge>}
+            {(selectedLead?.nicho || selectedConv?.lead?.nicho) && (
+              <Badge color="purple">{selectedLead?.nicho || selectedConv?.lead?.nicho}</Badge>
+            )}
           </div>
 
-          <div style={{ flex: 1, overflowY: 'auto', padding: '24px 32px', display: 'flex', flexDirection: 'column', gap: 10, background: co.bg }}>
+          {/* MENSAGENS */}
+          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '24px 32px', display: 'flex', flexDirection: 'column', gap: 10, background: co.bg }}>
             {messages.map((msg) => {
-              const isAI = msg.message?.type === 'ai'
+              const type = msg.type || 'human'
+              const content = msg.content || ''
+              const mediaUrl = msg.mediaUrl || null
+              const mediaType = msg.mediaType || null
+              const isRight = type === 'ai' || type === 'agent'
+              const bubbleBg = type === 'agent' ? co.success : type === 'ai' ? co.primary : co.bgCard
+              const bubbleColor = isRight ? '#fff' : co.text
+              const bubbleRadius = isRight ? '16px 16px 4px 16px' : '16px 16px 16px 4px'
               return (
-                <div key={msg.id} style={{ display: 'flex', justifyContent: isAI ? 'flex-end' : 'flex-start' }}>
-                  <div style={{ maxWidth: '65%', padding: '10px 14px', borderRadius: isAI ? '16px 16px 4px 16px' : '16px 16px 16px 4px', background: isAI ? co.primary : co.bgCard, border: isAI ? 'none' : `1px solid ${co.border}`, color: isAI ? '#fff' : co.text, fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                    {msg.message?.content}
+                <div key={msg.id} style={{ display: 'flex', justifyContent: isRight ? 'flex-end' : 'flex-start' }}>
+                  <div style={{ maxWidth: '68%', padding: '10px 14px', borderRadius: bubbleRadius, background: bubbleBg, border: isRight ? 'none' : `1px solid ${co.border}`, color: bubbleColor, fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                    {mediaUrl ? (
+                      <a href={mediaUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span>{mediaType === 'ptt' || mediaType === 'audio' ? '🎤' : mediaType === 'image' ? '🖼️' : '📎'}</span>
+                        <span>{mediaType === 'ptt' || mediaType === 'audio' ? 'Áudio' : mediaType === 'image' ? 'Imagem' : 'Arquivo'}</span>
+                      </a>
+                    ) : content}
                   </div>
                 </div>
               )
             })}
-            {messages.length === 0 && <div style={{ textAlign: 'center', color: co.textMuted, fontSize: 13, marginTop: 40 }}>Nenhuma mensagem</div>}
+            {messages.length === 0 && (
+              <div style={{ textAlign: 'center', color: co.textMuted, fontSize: 13, marginTop: 40, lineHeight: 1.8 }}>
+                Nenhuma mensagem ainda.<br />
+                <span style={{ fontSize: 11, opacity: 0.6 }}>As mensagens aparecem em tempo real via webhook.</span>
+              </div>
+            )}
             <div ref={messagesEndRef} />
           </div>
 
-          <div style={{ padding: '16px 24px', borderTop: `1px solid ${co.border}`, display: 'flex', gap: 12, alignItems: 'center', background: co.bgCard }}>
-            <input placeholder="Envio manual em breve — configure a API Key da Evolution nos ajustes"
-              disabled style={{ flex: 1, padding: '12px 16px', background: co.bgInput, border: `1px solid ${co.border}`, borderRadius: 24, color: co.textDim, fontSize: 12, outline: 'none', fontFamily: 'inherit', cursor: 'not-allowed' }} />
-            <button disabled style={{ width: 44, height: 44, borderRadius: '50%', background: co.primary, border: 'none', color: '#fff', fontSize: 18, cursor: 'not-allowed', opacity: 0.4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>→</button>
+          {/* INPUT BAR */}
+          <input ref={fileInputRef} type="file" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.zip" style={{ display: 'none' }}
+            onChange={e => { if (e.target.files[0]) { sendMedia(e.target.files[0]); e.target.value = '' } }} />
+          <div style={{ padding: '12px 20px', borderTop: `1px solid ${co.border}`, display: 'flex', gap: 8, alignItems: 'center', background: co.bgCard, flexShrink: 0 }}>
+            <button onClick={() => fileInputRef.current?.click()} title="Enviar arquivo" disabled={sending || recording}
+              style={{ width: 38, height: 38, borderRadius: 8, background: co.bgInput, border: `1px solid ${co.border}`, color: co.textMuted, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, opacity: (sending || recording) ? 0.4 : 1 }}>
+              📎
+            </button>
+            <input
+              value={recording ? '' : inputText}
+              onChange={e => setInputText(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendText() } }}
+              placeholder={recording ? '● Gravando...' : 'Digite uma mensagem...'}
+              disabled={sending || recording}
+              style={{ flex: 1, padding: '10px 16px', background: co.bgInput, border: `1px solid ${recording ? co.danger : co.border}`, borderRadius: 24, color: recording ? co.danger : co.text, fontSize: 13, outline: 'none', fontFamily: 'inherit', cursor: recording ? 'default' : 'text' }}
+            />
+            <button onMouseDown={startRecording} onMouseUp={stopRecording} onTouchStart={startRecording} onTouchEnd={stopRecording}
+              title="Segurar para gravar áudio" disabled={sending}
+              style={{ width: 38, height: 38, borderRadius: '50%', background: recording ? co.dangerBg : co.bgInput, border: `1px solid ${recording ? co.danger : co.border}`, color: recording ? co.danger : co.textMuted, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.15s', opacity: sending ? 0.4 : 1 }}>
+              🎤
+            </button>
+            <button onClick={sendText} disabled={sending || recording || !inputText.trim()}
+              style={{ width: 38, height: 38, borderRadius: '50%', background: co.primary, border: 'none', color: '#fff', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, opacity: (sending || recording || !inputText.trim()) ? 0.4 : 1, transition: 'opacity 0.15s' }}>
+              {sending ? '⋯' : '→'}
+            </button>
           </div>
         </div>
       ) : (
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, background: co.bg }}>
           <div style={{ fontSize: 56, opacity: 0.3 }}>💬</div>
-          <p style={{ color: co.textMuted, fontSize: 14, margin: 0 }}>Selecione uma conversa para visualizar</p>
+          <p style={{ color: co.textMuted, fontSize: 14, margin: 0 }}>Selecione uma conversa</p>
         </div>
       )}
     </div>

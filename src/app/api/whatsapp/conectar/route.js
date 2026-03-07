@@ -75,5 +75,23 @@ export async function POST(req) {
     return NextResponse.json({ error: dbErr.message }, { status: 500 })
   }
 
+  // 4. Configurar webhook da UazAPI para apontar para nossa app
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+  if (appUrl && instanceToken) {
+    try {
+      await fetch(`${UAZAPI_URL}/webhook`, {
+        method: 'POST',
+        headers: { 'token': instanceToken, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: `${appUrl}/api/webhook/whatsapp`,
+          events: ['messages'],
+          enabled: true,
+        }),
+      })
+    } catch (err) {
+      console.warn('[conectar] falha ao configurar webhook UazAPI:', err.message)
+    }
+  }
+
   return NextResponse.json({ instanceId, instanceToken, qrCode })
 }
