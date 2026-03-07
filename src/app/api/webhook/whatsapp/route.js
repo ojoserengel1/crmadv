@@ -47,7 +47,14 @@ export async function POST(req) {
     }
 
     // chatid (minúsculo) = número do contato (destino/origem da conversa)
-    const { sender_pn, chatid, text, fromMe, messageid, mediaUrl, type: msgType, messageTimestamp } = msg
+    const { sender_pn, chatid, text, fromMe, messageid, messageTimestamp } = msg
+
+    // Para mídia: URL está em msg.content.URL (objeto), não em msg.mediaUrl
+    // msg.mediaType = 'image' | 'audio' | 'ptt' | 'video' | 'document'
+    // msg.type = 'media' (genérico) para todos os tipos de mídia
+    const mediaType = msg.mediaType || null
+    const mediaUrl = (msg.mediaUrl) ||
+      (typeof msg.content === 'object' && msg.content?.URL) || null
 
     // Para fromMe=false (lead enviou): session_id = telefone do lead (sender_pn)
     // Para fromMe=true (bot enviou): session_id = telefone do contato (chatid)
@@ -85,7 +92,7 @@ export async function POST(req) {
           type,
           content: text || null,
           media_url: mediaUrl || null,
-          media_type: mediaUrl ? (msgType || 'media') : null,
+          media_type: mediaUrl ? (mediaType || 'media') : null,
           message_id: messageid,
           created_at: createdAt,
         },
@@ -99,7 +106,7 @@ export async function POST(req) {
         type,
         content: text || null,
         media_url: mediaUrl || null,
-        media_type: mediaUrl ? (msgType || 'media') : null,
+        media_type: mediaUrl ? (mediaType || 'media') : null,
         created_at: createdAt,
       })
       if (insertErr) console.error('[webhook] insert erro:', insertErr.message)
