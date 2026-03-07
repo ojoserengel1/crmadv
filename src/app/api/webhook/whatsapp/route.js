@@ -71,11 +71,17 @@ async function rehostMedia(url, mediaType, messageid, mediaKey = null, jpegThumb
 
     if (url && mediaKey) {
       // Baixa arquivo criptografado e descriptografa com a chave E2E
-      console.log('[rehost] baixando criptografado do CDN:', url.substring(0, 60))
-      const res = await fetch(url, { signal: AbortSignal.timeout(10000) })
+      console.log('[rehost] baixando criptografado do CDN:', url.substring(0, 80))
+      const res = await fetch(url, {
+        headers: { 'User-Agent': 'WhatsApp/2.23.24.82 A', 'Accept': '*/*' },
+        signal: AbortSignal.timeout(10000),
+      })
       if (res.ok) {
         const encBuf = Buffer.from(await res.arrayBuffer())
         console.log('[rehost] enc size:', encBuf.length, 'mediaType:', mediaType, 'mimetype:', mimetype)
+        if (encBuf.length < 100) {
+          console.error('[rehost] resposta muito pequena (possível erro CDN):', encBuf.toString('utf8').substring(0, 100))
+        }
         try {
           buf = decryptWhatsAppMedia(encBuf, mediaKey, mediaType)
           // Usa mimetype real do WhatsApp quando disponível (ex: audio/mp4 no iOS)
