@@ -8,8 +8,30 @@ const supabaseAdmin = createClient(
 )
 
 // URL base do servidor N8N (sem barra final)
-// Ex: https://n8n.grupoadv.com.br
 const N8N_BASE_URL = process.env.N8N_BASE_URL
+
+// Normaliza telefone para o mesmo formato usado na tabela leads
+// Ex: "554797094291@s.whatsapp.net" → "5547997094291"
+function normalizarTelefone(input) {
+  if (!input) return null
+  // Remove sufixo WhatsApp (@s.whatsapp.net, @lid, etc.)
+  let str = String(input).split('@')[0]
+  // Remove não-dígitos
+  let numero = str.replace(/\D/g, '')
+  // Corrige código de país duplicado
+  if (numero.startsWith('5555')) numero = numero.replace(/^555+/, '55')
+  // Remove código de país para normalização
+  if (numero.startsWith('55')) numero = numero.slice(2)
+  if (numero.length < 10 || numero.length > 11) return null
+  const ddd = numero.slice(0, 2)
+  let telefone = numero.slice(2)
+  // Adiciona dígito 9 para números de 8 dígitos (antigos)
+  if (telefone.length === 8) telefone = '9' + telefone
+  if (!telefone.startsWith('9')) telefone = '9' + telefone.slice(1)
+  const final = `55${ddd}${telefone}`
+  if (final.length !== 13) return null
+  return final
+}
 
 export async function POST(req) {
   try {
@@ -19,23 +41,22 @@ export async function POST(req) {
     const msg = body?.body?.message
 
     if (!instanceName || !msg) {
+      console.log('[webhook] payload inválido:', JSON.stringify({ instanceName, hasMsg: !!msg }))
       return NextResponse.json({ ok: true })
     }
 
-    const { sender_pn, text, fromMe, messageid, mediaUrl, type: msgType, messageTimestamp } = msg
+    // chatid (minúsculo) = número do contato (destino/origem da conversa)
+    const { sender_pn, chatid, text, fromMe, messageid, mediaUrl, type: msgType, messageTimestamp } = msg
 
-    // Para fromMe=true (bot enviou): o contato pode estar em sender_pn, to_pn, recipient, chatId, etc.
-    // Tentamos todos os campos possíveis — logamos o payload para identificar o correto
-    const telefone = fromMe
-      ? (msg.to_pn || msg.recipient_pn || msg.recipient || msg.chatId || msg.contact || sender_pn || null)
-      : (sender_pn || null)
+    // Para fromMe=false (lead enviou): session_id = telefone do lead (sender_pn)
+    // Para fromMe=true (bot enviou): session_id = telefone do contato (chatid)
+    const rawTelefone = fromMe ? (chatid || sender_pn || null) : (sender_pn || null)
+    const telefone = normalizarTelefone(rawTelefone)
 
-    // Log para debug de fromMe=true (descubrir campo correto do destinatário)
-    if (fromMe) {
-      console.log('[webhook] fromMe=true payload:', JSON.stringify({ sender_pn, to_pn: msg.to_pn, recipient_pn: msg.recipient_pn, chatId: msg.chatId, contact: msg.contact, telefone, text: text?.slice(0,30) }))
+    if (!telefone) {
+      console.log('[webhook] telefone nulo após normalização:', JSON.stringify({ rawTelefone, fromMe, sender_pn, chatid }))
+      return NextResponse.json({ ok: true })
     }
-
-    if (!telefone) return NextResponse.json({ ok: true })
 
     // Busca agente pela instância — pega também webhook_path para relay N8N
     const { data: agente } = await supabaseAdmin
@@ -48,9 +69,12 @@ export async function POST(req) {
 
     const type = fromMe ? 'ai' : 'human'
 
+    // messageTimestamp já vem em milissegundos da UazAPI
+    const createdAt = messageTimestamp ? new Date(messageTimestamp).toISOString() : new Date().toISOString()
+
     // Salva em chat_messages (message_id garante deduplicação)
     if (messageid) {
-      await supabaseAdmin.from('chat_messages').upsert(
+      const { error: upsertErr } = await supabaseAdmin.from('chat_messages').upsert(
         {
           agente_id: agenteId,
           session_id: telefone,
@@ -59,20 +83,22 @@ export async function POST(req) {
           media_url: mediaUrl || null,
           media_type: mediaUrl ? (msgType || 'media') : null,
           message_id: messageid,
-          created_at: messageTimestamp ? new Date(messageTimestamp * 1000).toISOString() : new Date().toISOString(),
+          created_at: createdAt,
         },
         { onConflict: 'message_id', ignoreDuplicates: true }
       )
+      if (upsertErr) console.error('[webhook] upsert erro:', upsertErr.message)
     } else {
-      await supabaseAdmin.from('chat_messages').insert({
+      const { error: insertErr } = await supabaseAdmin.from('chat_messages').insert({
         agente_id: agenteId,
         session_id: telefone,
         type,
         content: text || null,
         media_url: mediaUrl || null,
         media_type: mediaUrl ? (msgType || 'media') : null,
-        created_at: messageTimestamp ? new Date(messageTimestamp * 1000).toISOString() : new Date().toISOString(),
+        created_at: createdAt,
       })
+      if (insertErr) console.error('[webhook] insert erro:', insertErr.message)
     }
 
     // Repassa ao N8N somente mensagens recebidas (fromMe=false)
