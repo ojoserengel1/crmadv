@@ -20,52 +20,59 @@ async function ensureBucket() {
   }
 }
 
-// Baixa mídia do CDN do WhatsApp e re-hospeda no Supabase Storage
-// Necessário pois URLs do WhatsApp expiram e têm restrições CORS
-async function rehostMedia(url, mediaType, messageid) {
-  if (!url || !messageid) return url
+// Re-hospeda mídia no Supabase Storage para evitar CORS e URLs expiradas.
+// Para imagens: usa JPEGThumbnail (base64 já decodificado) pois o CDN do WhatsApp
+// serve dados criptografados. Para áudio: tenta baixar do CDN.
+async function rehostMedia(url, mediaType, messageid, base64Thumbnail = null) {
+  if (!messageid) return url
   try {
     await ensureBucket()
-    console.log('[rehost] baixando mídia de:', url.substring(0, 80))
-    const res = await fetch(url, { signal: AbortSignal.timeout(9000) })
-    console.log('[rehost] fetch status:', res.status, 'content-type:', res.headers.get('content-type'))
-    if (!res.ok) {
-      console.error('[rehost] fetch falhou:', res.status, res.statusText)
-      return url
+    let buf, ct, ext
+
+    if (base64Thumbnail && mediaType === 'image') {
+      // Thumbnail JPEG já decodificado — não precisa baixar do CDN criptografado
+      buf = Buffer.from(base64Thumbnail, 'base64')
+      ct = 'image/jpeg'
+      ext = 'jpg'
+      console.log('[rehost] usando JPEGThumbnail, size:', buf.length)
+    } else if (url) {
+      // Para áudio/outros: tenta baixar do CDN
+      console.log('[rehost] baixando do CDN:', url.substring(0, 80))
+      const res = await fetch(url, { signal: AbortSignal.timeout(9000) })
+      if (!res.ok) {
+        console.error('[rehost] CDN falhou:', res.status)
+        return url
+      }
+      const ctRaw = res.headers.get('content-type') || 'application/octet-stream'
+      ct = ctRaw === 'application/octet-stream'
+        ? (mediaType === 'ptt' || mediaType === 'audio' ? 'audio/ogg'
+          : mediaType === 'video' ? 'video/mp4'
+          : ctRaw)
+        : ctRaw
+      ext = ct.includes('ogg') ? 'ogg'
+        : ct.includes('mp3') || ct.includes('mpeg') ? 'mp3'
+        : ct.includes('mp4') ? 'mp4'
+        : mediaType === 'ptt' || mediaType === 'audio' ? 'ogg'
+        : 'bin'
+      buf = Buffer.from(await res.arrayBuffer())
+      console.log('[rehost] CDN buf size:', buf.length, 'ct:', ct)
+    } else {
+      return null
     }
-    const ctRaw = res.headers.get('content-type') || 'application/octet-stream'
-    // WhatsApp CDN retorna application/octet-stream — força o MIME correto pelo mediaType
-    const ct = ctRaw === 'application/octet-stream'
-      ? (mediaType === 'image' ? 'image/jpeg'
-        : mediaType === 'ptt' || mediaType === 'audio' ? 'audio/ogg'
-        : mediaType === 'video' ? 'video/mp4'
-        : ctRaw)
-      : ctRaw
-    const ext = ct.includes('jpeg') || ct.includes('jpg') ? 'jpg'
-      : ct.includes('png') ? 'png'
-      : ct.includes('webp') ? 'webp'
-      : ct.includes('ogg') ? 'ogg'
-      : ct.includes('mp3') || ct.includes('mpeg') ? 'mp3'
-      : ct.includes('mp4') ? 'mp4'
-      : mediaType === 'image' ? 'jpg'
-      : mediaType === 'ptt' || mediaType === 'audio' ? 'ogg'
-      : 'bin'
-    const buf = Buffer.from(await res.arrayBuffer())
-    console.log('[rehost] buf size:', buf.length, 'ct:', ct, 'ext:', ext)
+
     const fname = `${messageid}.${ext}`
-    const { data: upData, error: upErr } = await supabaseAdmin.storage
+    const { error: upErr } = await supabaseAdmin.storage
       .from('chat-media')
       .upload(fname, buf, { contentType: ct, upsert: true })
     if (upErr) {
-      console.error('[rehost] upload err:', JSON.stringify(upErr))
+      console.error('[rehost] upload err:', upErr.message)
       return url
     }
-    console.log('[rehost] upload ok:', JSON.stringify(upData))
     const { data: pub } = supabaseAdmin.storage.from('chat-media').getPublicUrl(fname)
     console.log('[rehost] URL final:', pub.publicUrl)
     return pub.publicUrl
   } catch (e) {
-    console.error('[rehost] exceção:', e.message, e.stack?.split('\n')[1])
+    console.error('[rehost] exceção:', e.message)
     return url
   }
 }
@@ -115,6 +122,8 @@ export async function POST(req) {
     const mediaType = msg.mediaType || null
     const mediaUrl = (msg.mediaUrl) ||
       (typeof msg.content === 'object' && msg.content?.URL) || null
+    // JPEGThumbnail: base64 já decodificado, disponível para imagens
+    const jpegThumbnail = (typeof msg.content === 'object' && msg.content?.JPEGThumbnail) || null
 
     // Para fromMe=false (lead enviou): session_id = telefone do lead (sender_pn)
     // Para fromMe=true (bot enviou): session_id = telefone do contato (chatid)
@@ -143,11 +152,13 @@ export async function POST(req) {
     // messageTimestamp já vem em milissegundos da UazAPI
     const createdAt = messageTimestamp ? new Date(messageTimestamp).toISOString() : new Date().toISOString()
 
-    // Se há mídia, baixa do CDN do WhatsApp e re-hospeda no Supabase Storage
-    // Isso evita URLs expiradas e erros CORS ao exibir no browser
+    // Re-hospeda mídia no Supabase Storage
+    // Imagens: usa JPEGThumbnail (já decodificado — CDN do WhatsApp serve dados criptografados)
+    // Áudio: tenta baixar do CDN diretamente
     let finalMediaUrl = mediaUrl
-    if (mediaUrl) {
-      finalMediaUrl = await rehostMedia(mediaUrl, mediaType, messageid || `tmp_${Date.now()}`)
+    if (jpegThumbnail || mediaUrl) {
+      const mid = messageid || `tmp_${Date.now()}`
+      finalMediaUrl = await rehostMedia(mediaUrl, mediaType, mid, jpegThumbnail)
     }
 
     // Salva em chat_messages (message_id garante deduplicação)
