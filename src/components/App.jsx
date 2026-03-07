@@ -1114,30 +1114,29 @@ function ChatView({ clienteId }) {
             </button>
           </div>
         </div>
-
-        {/* LIGHTBOX */}
-        {lightboxUrl && (
-          <div
-            onClick={() => setLightboxUrl(null)}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'zoom-out' }}
-          >
-            <img
-              src={lightboxUrl}
-              alt="imagem ampliada"
-              style={{ maxWidth: '90vw', maxHeight: '90vh', borderRadius: 12, boxShadow: '0 8px 40px rgba(0,0,0,0.6)', objectFit: 'contain' }}
-              onClick={e => e.stopPropagation()}
-            />
-            <button
-              onClick={() => setLightboxUrl(null)}
-              style={{ position: 'absolute', top: 20, right: 24, background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', fontSize: 22, width: 40, height: 40, borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-            >✕</button>
-          </div>
-        )}
-
       ) : (
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, background: co.bg }}>
           <div style={{ fontSize: 56, opacity: 0.3 }}>💬</div>
           <p style={{ color: co.textMuted, fontSize: 14, margin: 0 }}>Selecione uma conversa</p>
+        </div>
+      )}
+
+      {/* LIGHTBOX */}
+      {lightboxUrl && (
+        <div
+          onClick={() => setLightboxUrl(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'zoom-out' }}
+        >
+          <img
+            src={lightboxUrl}
+            alt="imagem ampliada"
+            style={{ maxWidth: '90vw', maxHeight: '90vh', borderRadius: 12, boxShadow: '0 8px 40px rgba(0,0,0,0.6)', objectFit: 'contain' }}
+            onClick={e => e.stopPropagation()}
+          />
+          <button
+            onClick={() => setLightboxUrl(null)}
+            style={{ position: 'absolute', top: 20, right: 24, background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', fontSize: 22, width: 40, height: 40, borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >✕</button>
         </div>
       )}
     </div>
