@@ -32,7 +32,7 @@ export async function POST(req) {
       'Content-Type': 'application/json',
     }
 
-    // Envia via UazAPI
+    // Envia via UazAPI — endpoint específico por tipo
     let uazRes
     if (tipo === 'text') {
       uazRes = await fetch(`${UAZAPI_URL}/send/text`, {
@@ -40,11 +40,23 @@ export async function POST(req) {
         headers,
         body: JSON.stringify({ number: telefone, text: conteudo }),
       })
-    } else {
-      uazRes = await fetch(`${UAZAPI_URL}/send/media`, {
+    } else if (tipo === 'ptt' || tipo === 'audio') {
+      uazRes = await fetch(`${UAZAPI_URL}/send/audio`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ number: telefone, file: conteudo, type: tipo }),
+        body: JSON.stringify({ number: telefone, url: conteudo }),
+      })
+    } else if (tipo === 'image') {
+      uazRes = await fetch(`${UAZAPI_URL}/send/image`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ number: telefone, url: conteudo, caption: '' }),
+      })
+    } else {
+      uazRes = await fetch(`${UAZAPI_URL}/send/document`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ number: telefone, url: conteudo, filename: conteudo.split('/').pop() }),
       })
     }
 

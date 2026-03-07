@@ -1049,10 +1049,13 @@ function ChatView({ clienteId }) {
               return (
                 <div key={msg.id} style={{ display: 'flex', justifyContent: isRight ? 'flex-end' : 'flex-start' }}>
                   <div style={{ maxWidth: '68%', padding: '10px 14px', borderRadius: bubbleRadius, background: bubbleBg, border: isRight ? 'none' : `1px solid ${co.border}`, color: bubbleColor, fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                    {mediaUrl ? (
+                    {mediaUrl && (mediaType === 'ptt' || mediaType === 'audio') ? (
+                      <audio controls src={mediaUrl} style={{ maxWidth: 260, height: 36, display: 'block' }} />
+                    ) : mediaUrl && mediaType === 'image' ? (
+                      <img src={mediaUrl} alt="imagem" style={{ maxWidth: 240, maxHeight: 240, borderRadius: 8, display: 'block', cursor: 'pointer' }} onClick={() => window.open(mediaUrl, '_blank')} />
+                    ) : mediaUrl ? (
                       <a href={mediaUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline', display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span>{mediaType === 'ptt' || mediaType === 'audio' ? '🎤' : mediaType === 'image' ? '🖼️' : '📎'}</span>
-                        <span>{mediaType === 'ptt' || mediaType === 'audio' ? 'Áudio' : mediaType === 'image' ? 'Imagem' : 'Arquivo'}</span>
+                        <span>📎</span><span>{content || 'Arquivo'}</span>
                       </a>
                     ) : content}
                   </div>
