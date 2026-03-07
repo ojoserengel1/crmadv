@@ -72,19 +72,25 @@ async function rehostMedia(url, mediaType, messageid, mediaKey = null, jpegThumb
     if (url && mediaKey) {
       // Baixa arquivo criptografado e descriptografa com a chave E2E
       const cdnHeaders = { 'User-Agent': 'WhatsApp/2.23.24.82 A', 'Accept': '*/*' }
-      // Áudio gravado ao vivo pode ainda estar sendo enviado ao CDN quando o webhook chega.
-      // Retry com espera crescente até o arquivo estar disponível (> 100 bytes).
+      // mms3=true faz o CDN retornar apenas o sidecar (26 bytes), não o arquivo completo.
+      // Remove o parâmetro para forçar download do arquivo inteiro.
+      let cleanUrl = url
+      try {
+        const u = new URL(url)
+        u.searchParams.delete('mms3')
+        cleanUrl = u.toString()
+      } catch (_) {}
+      if (cleanUrl !== url) console.log('[rehost] URL sem mms3:', cleanUrl.substring(0, 100))
+
       let encBuf = null
-      for (let attempt = 0; attempt < 4; attempt++) {
-        if (attempt > 0) {
-          const wait = attempt * 1500
-          console.log(`[rehost] CDN retornou ${encBuf?.length ?? 0} bytes, aguardando ${wait}ms (tentativa ${attempt+1})`)
-          await new Promise(r => setTimeout(r, wait))
-        }
-        const r = await fetch(url, { headers: cdnHeaders, signal: AbortSignal.timeout(10000) })
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const fetchUrl = attempt === 0 ? cleanUrl : url // 2ª tentativa com URL original
+        const r = await fetch(fetchUrl, { headers: cdnHeaders, signal: AbortSignal.timeout(10000) })
         if (!r.ok) { console.error('[rehost] CDN status:', r.status); break }
         encBuf = Buffer.from(await r.arrayBuffer())
+        console.log(`[rehost] tentativa ${attempt+1} enc size:`, encBuf.length)
         if (encBuf.length > 100) break
+        await new Promise(r2 => setTimeout(r2, 1000))
       }
       if (encBuf && encBuf.length > 0) {
         console.log('[rehost] enc size:', encBuf.length, 'mediaType:', mediaType)
