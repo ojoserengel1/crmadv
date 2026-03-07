@@ -33,7 +33,14 @@ async function rehostMedia(url, mediaType, messageid) {
       console.error('[rehost] fetch falhou:', res.status, res.statusText)
       return url
     }
-    const ct = res.headers.get('content-type') || 'application/octet-stream'
+    const ctRaw = res.headers.get('content-type') || 'application/octet-stream'
+    // WhatsApp CDN retorna application/octet-stream — força o MIME correto pelo mediaType
+    const ct = ctRaw === 'application/octet-stream'
+      ? (mediaType === 'image' ? 'image/jpeg'
+        : mediaType === 'ptt' || mediaType === 'audio' ? 'audio/ogg'
+        : mediaType === 'video' ? 'video/mp4'
+        : ctRaw)
+      : ctRaw
     const ext = ct.includes('jpeg') || ct.includes('jpg') ? 'jpg'
       : ct.includes('png') ? 'png'
       : ct.includes('webp') ? 'webp'
@@ -44,7 +51,7 @@ async function rehostMedia(url, mediaType, messageid) {
       : mediaType === 'ptt' || mediaType === 'audio' ? 'ogg'
       : 'bin'
     const buf = Buffer.from(await res.arrayBuffer())
-    console.log('[rehost] buf size:', buf.length, 'ext:', ext, 'fname:', `${messageid}.${ext}`)
+    console.log('[rehost] buf size:', buf.length, 'ct:', ct, 'ext:', ext)
     const fname = `${messageid}.${ext}`
     const { data: upData, error: upErr } = await supabaseAdmin.storage
       .from('chat-media')
