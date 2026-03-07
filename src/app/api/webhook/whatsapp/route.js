@@ -125,6 +125,17 @@ export async function POST(req) {
     // JPEGThumbnail: base64 já decodificado, disponível para imagens
     const jpegThumbnail = (typeof msg.content === 'object' && msg.content?.JPEGThumbnail) || null
 
+    // Log para diagnóstico de URLs de mídia
+    if (mediaType) {
+      console.log('[webhook] mídia detectada:', JSON.stringify({
+        mediaType,
+        msgMediaUrl: msg.mediaUrl || null,
+        contentUrl: (typeof msg.content === 'object' && msg.content?.URL) ? msg.content.URL.substring(0, 60) : null,
+        hasJpegThumbnail: !!jpegThumbnail,
+        contentKeys: typeof msg.content === 'object' ? Object.keys(msg.content) : null,
+      }))
+    }
+
     // Para fromMe=false (lead enviou): session_id = telefone do lead (sender_pn)
     // Para fromMe=true (bot enviou): session_id = telefone do contato (chatid)
     const rawTelefone = fromMe ? (chatid || sender_pn || null) : (sender_pn || null)
