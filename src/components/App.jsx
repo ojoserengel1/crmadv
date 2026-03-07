@@ -1051,7 +1051,11 @@ function ChatView({ clienteId }) {
                 <div key={msg.id} style={{ display: 'flex', justifyContent: isRight ? 'flex-end' : 'flex-start' }}>
                   <div style={{ maxWidth: '68%', padding: '10px 14px', borderRadius: bubbleRadius, background: bubbleBg, border: isRight ? 'none' : `1px solid ${co.border}`, color: bubbleColor, fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                     {mediaUrl && (mediaType === 'ptt' || mediaType === 'audio') ? (
-                      <audio controls src={mediaUrl} style={{ maxWidth: 260, height: 36, display: 'block' }} />
+                      <audio controls style={{ maxWidth: 260, height: 36, display: 'block' }}>
+                        <source src={mediaUrl} type="audio/ogg" />
+                        <source src={mediaUrl} type="audio/mp4" />
+                        <source src={mediaUrl} type="audio/mpeg" />
+                      </audio>
                     ) : mediaUrl && mediaType === 'image' ? (
                       <>
                         <img

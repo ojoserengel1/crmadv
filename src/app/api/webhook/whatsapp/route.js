@@ -63,7 +63,7 @@ async function ensureBucket() {
 // Re-hospeda mídia no Supabase Storage.
 // Imagens/áudio: baixa do CDN do WhatsApp e descriptografa com mediaKey.
 // Fallback: usa JPEGThumbnail se descriptografia falhar.
-async function rehostMedia(url, mediaType, messageid, mediaKey = null, jpegThumbnail = null) {
+async function rehostMedia(url, mediaType, messageid, mediaKey = null, jpegThumbnail = null, mimetype = null) {
   if (!messageid) return url
   try {
     await ensureBucket()
@@ -75,18 +75,27 @@ async function rehostMedia(url, mediaType, messageid, mediaKey = null, jpegThumb
       const res = await fetch(url, { signal: AbortSignal.timeout(10000) })
       if (res.ok) {
         const encBuf = Buffer.from(await res.arrayBuffer())
-        console.log('[rehost] enc size:', encBuf.length, 'mediaType:', mediaType)
+        console.log('[rehost] enc size:', encBuf.length, 'mediaType:', mediaType, 'mimetype:', mimetype)
         try {
           buf = decryptWhatsAppMedia(encBuf, mediaKey, mediaType)
-          ct = mediaType === 'image' ? 'image/jpeg'
+          // Usa mimetype real do WhatsApp quando disponível (ex: audio/mp4 no iOS)
+          ct = mimetype && mimetype !== 'application/octet-stream' ? mimetype
+            : mediaType === 'image' ? 'image/jpeg'
             : (mediaType === 'ptt' || mediaType === 'audio') ? 'audio/ogg'
             : mediaType === 'video' ? 'video/mp4'
             : 'application/octet-stream'
-          ext = mediaType === 'image' ? 'jpg'
+          ext = ct.includes('jpeg') || ct.includes('jpg') ? 'jpg'
+            : ct.includes('png') ? 'png'
+            : ct.includes('webp') ? 'webp'
+            : ct.includes('ogg') ? 'ogg'
+            : ct.includes('mp4') && mediaType !== 'video' ? 'm4a'
+            : ct.includes('mp4') ? 'mp4'
+            : ct.includes('mpeg') || ct.includes('mp3') ? 'mp3'
+            : ct.includes('aac') ? 'aac'
+            : mediaType === 'image' ? 'jpg'
             : (mediaType === 'ptt' || mediaType === 'audio') ? 'ogg'
-            : mediaType === 'video' ? 'mp4'
             : 'bin'
-          console.log('[rehost] descriptografado ok, size:', buf.length)
+          console.log('[rehost] descriptografado ok, size:', buf.length, 'ct:', ct, 'ext:', ext)
         } catch (decErr) {
           console.error('[rehost] descriptografia falhou:', decErr.message)
           buf = null
@@ -168,9 +177,10 @@ export async function POST(req) {
     const mediaType = msg.mediaType || null
     const mediaUrl = (msg.mediaUrl) ||
       (typeof msg.content === 'object' && msg.content?.URL) || null
-    // Campos do content para descriptografia
+    // Campos do content para descriptografia e tipo MIME real
     const jpegThumbnail = (typeof msg.content === 'object' && msg.content?.JPEGThumbnail) || null
     const mediaKey = (typeof msg.content === 'object' && msg.content?.mediaKey) || null
+    const mimetype = (typeof msg.content === 'object' && msg.content?.mimetype) || null
 
     // Para fromMe=false (lead enviou): session_id = telefone do lead (sender_pn)
     // Para fromMe=true (bot enviou): session_id = telefone do contato (chatid)
@@ -204,7 +214,7 @@ export async function POST(req) {
     let finalMediaUrl = mediaUrl
     if (mediaUrl || jpegThumbnail) {
       const mid = messageid || `tmp_${Date.now()}`
-      finalMediaUrl = await rehostMedia(mediaUrl, mediaType, mid, mediaKey, jpegThumbnail)
+      finalMediaUrl = await rehostMedia(mediaUrl, mediaType, mid, mediaKey, jpegThumbnail, mimetype)
     }
 
     // Salva em chat_messages (message_id garante deduplicação)
