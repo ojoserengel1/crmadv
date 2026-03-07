@@ -26,8 +26,13 @@ async function rehostMedia(url, mediaType, messageid) {
   if (!url || !messageid) return url
   try {
     await ensureBucket()
+    console.log('[rehost] baixando mídia de:', url.substring(0, 80))
     const res = await fetch(url, { signal: AbortSignal.timeout(9000) })
-    if (!res.ok) return url
+    console.log('[rehost] fetch status:', res.status, 'content-type:', res.headers.get('content-type'))
+    if (!res.ok) {
+      console.error('[rehost] fetch falhou:', res.status, res.statusText)
+      return url
+    }
     const ct = res.headers.get('content-type') || 'application/octet-stream'
     const ext = ct.includes('jpeg') || ct.includes('jpg') ? 'jpg'
       : ct.includes('png') ? 'png'
@@ -39,20 +44,22 @@ async function rehostMedia(url, mediaType, messageid) {
       : mediaType === 'ptt' || mediaType === 'audio' ? 'ogg'
       : 'bin'
     const buf = Buffer.from(await res.arrayBuffer())
+    console.log('[rehost] buf size:', buf.length, 'ext:', ext, 'fname:', `${messageid}.${ext}`)
     const fname = `${messageid}.${ext}`
-    const { error: upErr } = await supabaseAdmin.storage
+    const { data: upData, error: upErr } = await supabaseAdmin.storage
       .from('chat-media')
       .upload(fname, buf, { contentType: ct, upsert: true })
     if (upErr) {
-      console.error('[webhook] storage upload err:', upErr.message)
+      console.error('[rehost] upload err:', JSON.stringify(upErr))
       return url
     }
+    console.log('[rehost] upload ok:', JSON.stringify(upData))
     const { data: pub } = supabaseAdmin.storage.from('chat-media').getPublicUrl(fname)
-    console.log('[webhook] mídia re-hospedada:', pub.publicUrl)
+    console.log('[rehost] URL final:', pub.publicUrl)
     return pub.publicUrl
   } catch (e) {
-    console.error('[webhook] rehost err:', e.message)
-    return url // fallback para URL original
+    console.error('[rehost] exceção:', e.message, e.stack?.split('\n')[1])
+    return url
   }
 }
 
