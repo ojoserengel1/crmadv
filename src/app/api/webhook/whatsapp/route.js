@@ -10,6 +10,52 @@ const supabaseAdmin = createClient(
 // URL base do servidor N8N (sem barra final)
 const N8N_BASE_URL = process.env.N8N_BASE_URL
 
+// Garante que o bucket chat-media existe (executa uma vez por cold start)
+let bucketReady = false
+async function ensureBucket() {
+  if (bucketReady) return
+  const { error } = await supabaseAdmin.storage.createBucket('chat-media', { public: true })
+  if (!error || error.message?.includes('already exists') || error.message?.includes('duplicate')) {
+    bucketReady = true
+  }
+}
+
+// Baixa mídia do CDN do WhatsApp e re-hospeda no Supabase Storage
+// Necessário pois URLs do WhatsApp expiram e têm restrições CORS
+async function rehostMedia(url, mediaType, messageid) {
+  if (!url || !messageid) return url
+  try {
+    await ensureBucket()
+    const res = await fetch(url, { signal: AbortSignal.timeout(9000) })
+    if (!res.ok) return url
+    const ct = res.headers.get('content-type') || 'application/octet-stream'
+    const ext = ct.includes('jpeg') || ct.includes('jpg') ? 'jpg'
+      : ct.includes('png') ? 'png'
+      : ct.includes('webp') ? 'webp'
+      : ct.includes('ogg') ? 'ogg'
+      : ct.includes('mp3') || ct.includes('mpeg') ? 'mp3'
+      : ct.includes('mp4') ? 'mp4'
+      : mediaType === 'image' ? 'jpg'
+      : mediaType === 'ptt' || mediaType === 'audio' ? 'ogg'
+      : 'bin'
+    const buf = Buffer.from(await res.arrayBuffer())
+    const fname = `${messageid}.${ext}`
+    const { error: upErr } = await supabaseAdmin.storage
+      .from('chat-media')
+      .upload(fname, buf, { contentType: ct, upsert: true })
+    if (upErr) {
+      console.error('[webhook] storage upload err:', upErr.message)
+      return url
+    }
+    const { data: pub } = supabaseAdmin.storage.from('chat-media').getPublicUrl(fname)
+    console.log('[webhook] mídia re-hospedada:', pub.publicUrl)
+    return pub.publicUrl
+  } catch (e) {
+    console.error('[webhook] rehost err:', e.message)
+    return url // fallback para URL original
+  }
+}
+
 // Normaliza telefone para o mesmo formato usado na tabela leads
 // Ex: "554797094291@s.whatsapp.net" → "5547997094291"
 function normalizarTelefone(input) {
@@ -83,6 +129,13 @@ export async function POST(req) {
     // messageTimestamp já vem em milissegundos da UazAPI
     const createdAt = messageTimestamp ? new Date(messageTimestamp).toISOString() : new Date().toISOString()
 
+    // Se há mídia, baixa do CDN do WhatsApp e re-hospeda no Supabase Storage
+    // Isso evita URLs expiradas e erros CORS ao exibir no browser
+    let finalMediaUrl = mediaUrl
+    if (mediaUrl) {
+      finalMediaUrl = await rehostMedia(mediaUrl, mediaType, messageid || `tmp_${Date.now()}`)
+    }
+
     // Salva em chat_messages (message_id garante deduplicação)
     if (messageid) {
       const { error: upsertErr } = await supabaseAdmin.from('chat_messages').upsert(
@@ -91,8 +144,8 @@ export async function POST(req) {
           session_id: telefone,
           type,
           content: text || null,
-          media_url: mediaUrl || null,
-          media_type: mediaUrl ? (mediaType || 'media') : null,
+          media_url: finalMediaUrl || null,
+          media_type: finalMediaUrl ? (mediaType || 'media') : null,
           message_id: messageid,
           created_at: createdAt,
         },
@@ -105,8 +158,8 @@ export async function POST(req) {
         session_id: telefone,
         type,
         content: text || null,
-        media_url: mediaUrl || null,
-        media_type: mediaUrl ? (mediaType || 'media') : null,
+        media_url: finalMediaUrl || null,
+        media_type: finalMediaUrl ? (mediaType || 'media') : null,
         created_at: createdAt,
       })
       if (insertErr) console.error('[webhook] insert erro:', insertErr.message)

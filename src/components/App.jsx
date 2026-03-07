@@ -1052,7 +1052,22 @@ function ChatView({ clienteId }) {
                     {mediaUrl && (mediaType === 'ptt' || mediaType === 'audio') ? (
                       <audio controls src={mediaUrl} style={{ maxWidth: 260, height: 36, display: 'block' }} />
                     ) : mediaUrl && mediaType === 'image' ? (
-                      <img src={mediaUrl} alt="imagem" style={{ maxWidth: 240, maxHeight: 240, borderRadius: 8, display: 'block', cursor: 'pointer' }} onClick={() => window.open(mediaUrl, '_blank')} />
+                      <>
+                        <img
+                          src={mediaUrl}
+                          alt="imagem"
+                          style={{ maxWidth: 240, maxHeight: 240, borderRadius: 8, display: 'block', cursor: 'pointer' }}
+                          onClick={() => window.open(mediaUrl, '_blank')}
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none'
+                            const next = e.currentTarget.nextElementSibling
+                            if (next) next.style.display = 'flex'
+                          }}
+                        />
+                        <a href={mediaUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline', display: 'none', alignItems: 'center', gap: 6 }}>
+                          <span>🖼️</span><span>Ver imagem</span>
+                        </a>
+                      </>
                     ) : mediaUrl ? (
                       <a href={mediaUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline', display: 'flex', alignItems: 'center', gap: 6 }}>
                         <span>📎</span><span>{content || 'Arquivo'}</span>
