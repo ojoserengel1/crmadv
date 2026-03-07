@@ -1005,7 +1005,14 @@ function ChatView({ clienteId }) {
                 </div>
                 <p style={{ color: co.textMuted, fontSize: 11, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {conv.lastMessage
-                    ? `${conv.lastMessage.type === 'human' ? '' : '→ '}${conv.lastMessage.content?.slice(0, 40) || ''}${(conv.lastMessage.content?.length || 0) > 40 ? '...' : ''}`
+                    ? (() => {
+                        const c = conv.lastMessage.content || ''
+                        const arrow = conv.lastMessage.type === 'human' ? '' : '→ '
+                        const preview = c.startsWith('[ptt') ? '🎤 Áudio de voz'
+                          : c.startsWith('[') && c.includes('media') ? '📎 Arquivo'
+                          : c.slice(0, 40) + (c.length > 40 ? '...' : '')
+                        return `${arrow}${preview}`
+                      })()
                     : <span style={{ fontStyle: 'italic', opacity: 0.5 }}>Nenhuma mensagem</span>}
                 </p>
               </div>
@@ -1050,12 +1057,34 @@ function ChatView({ clienteId }) {
               return (
                 <div key={msg.id} style={{ display: 'flex', justifyContent: isRight ? 'flex-end' : 'flex-start' }}>
                   <div style={{ maxWidth: '68%', padding: '10px 14px', borderRadius: bubbleRadius, background: bubbleBg, border: isRight ? 'none' : `1px solid ${co.border}`, color: bubbleColor, fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                    {mediaUrl && (mediaType === 'ptt' || mediaType === 'audio') ? (
-                      <audio controls style={{ maxWidth: 260, height: 36, display: 'block' }}>
-                        <source src={mediaUrl} type="audio/ogg" />
-                        <source src={mediaUrl} type="audio/mp4" />
-                        <source src={mediaUrl} type="audio/mpeg" />
-                      </audio>
+                    {(mediaType === 'ptt' || mediaType === 'audio') ? (
+                      mediaUrl ? (
+                        // Áudio hospedado no Supabase → player funcional
+                        <audio controls style={{ maxWidth: 260, height: 36, display: 'block' }}>
+                          <source src={mediaUrl} type="audio/ogg" />
+                          <source src={mediaUrl} type="audio/mp4" />
+                          <source src={mediaUrl} type="audio/mpeg" />
+                        </audio>
+                      ) : (
+                        // PTT sem URL (CDN do WhatsApp usa streaming autenticado)
+                        // Exibe card de voz com duração quando disponível
+                        (() => {
+                          const durMatch = content.match(/\[ptt:(\d+)s\]/)
+                          const dur = durMatch ? parseInt(durMatch[1]) : null
+                          const min = dur ? Math.floor(dur / 60) : 0
+                          const sec = dur ? dur % 60 : 0
+                          const durStr = dur ? `${min}:${String(sec).padStart(2, '0')}` : ''
+                          return (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 160 }}>
+                              <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>🎤</div>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: 12, fontWeight: 600, opacity: 0.9 }}>Áudio de voz</div>
+                                {durStr && <div style={{ fontSize: 11, opacity: 0.65 }}>{durStr}</div>}
+                              </div>
+                            </div>
+                          )
+                        })()
+                      )
                     ) : mediaUrl && mediaType === 'image' ? (
                       <>
                         <img
