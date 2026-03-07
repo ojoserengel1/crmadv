@@ -37,8 +37,9 @@ export async function POST(req) {
   try {
     const body = await req.json()
 
-    const instanceName = body?.body?.instanceName
-    const msg = body?.body?.message
+    // UazAPI envia payload flat (sem wrapper body)
+    const instanceName = body?.instanceName
+    const msg = body?.message
 
     if (!instanceName || !msg) {
       console.log('[webhook] payload inválido:', JSON.stringify({ instanceName, hasMsg: !!msg }))
