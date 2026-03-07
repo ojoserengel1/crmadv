@@ -71,7 +71,8 @@ async function rehostMedia(url, mediaType, messageid, mediaKey = null, jpegThumb
 
     if (url && mediaKey) {
       // Baixa arquivo criptografado e descriptografa com a chave E2E
-      console.log('[rehost] baixando criptografado do CDN:', url.substring(0, 80))
+      console.log('[rehost] URL completa:', url)
+      console.log('[rehost] baixando criptografado do CDN...')
       const res = await fetch(url, {
         headers: { 'User-Agent': 'WhatsApp/2.23.24.82 A', 'Accept': '*/*' },
         signal: AbortSignal.timeout(10000),
@@ -79,8 +80,8 @@ async function rehostMedia(url, mediaType, messageid, mediaKey = null, jpegThumb
       if (res.ok) {
         const encBuf = Buffer.from(await res.arrayBuffer())
         console.log('[rehost] enc size:', encBuf.length, 'mediaType:', mediaType, 'mimetype:', mimetype)
-        if (encBuf.length < 100) {
-          console.error('[rehost] resposta muito pequena (possível erro CDN):', encBuf.toString('utf8').substring(0, 100))
+        if (encBuf.length < 200) {
+          console.error('[rehost] resposta pequena, hex:', encBuf.toString('hex'))
         }
         try {
           buf = decryptWhatsAppMedia(encBuf, mediaKey, mediaType)
