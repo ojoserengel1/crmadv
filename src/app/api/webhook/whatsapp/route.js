@@ -61,19 +61,74 @@ async function ensureBucket() {
 }
 
 // Re-hospeda mídia no Supabase Storage.
-// Imagens/áudio: baixa do CDN do WhatsApp e descriptografa com mediaKey.
-// Fallback: usa JPEGThumbnail se descriptografia falhar.
-async function rehostMedia(url, mediaType, messageid, mediaKey = null, jpegThumbnail = null, mimetype = null) {
+// Áudio PTT: usa UazAPI /message/download (autenticado). Imagens: CDN + decrypt HKDF.
+// Fallback: usa JPEGThumbnail se tudo falhar.
+async function rehostMedia(url, mediaType, messageid, mediaKey = null, jpegThumbnail = null, mimetype = null, uazapiToken = null, content = null) {
   if (!messageid) return url
   try {
     await ensureBucket()
     let buf, ct, ext
 
-    if (url && mediaKey) {
-      // Baixa arquivo criptografado e descriptografa com a chave E2E
-      const cdnHeaders = { 'User-Agent': 'WhatsApp/2.23.24.82 A', 'Accept': '*/*' }
-      // mms3=true faz o CDN retornar apenas o sidecar (26 bytes), não o arquivo completo.
-      // Remove o parâmetro para forçar download do arquivo inteiro.
+    const isPtt = mediaType === 'ptt' || mediaType === 'audio'
+
+    // Para PTT/áudio: tenta UazAPI /message/download primeiro
+    // UazAPI mantém sessão autenticada e pode baixar o arquivo real
+    if (isPtt && uazapiToken) {
+      const UAZAPI_URL = process.env.UAZAPI_SERVER_URL
+      if (UAZAPI_URL) {
+        try {
+          console.log('[rehost] tentando UazAPI /message/download para PTT, msgid:', messageid)
+          const r = await fetch(`${UAZAPI_URL}/message/download`, {
+            method: 'POST',
+            headers: { 'token': uazapiToken, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              messageId: messageid,
+              url: url || undefined,
+              mediaKey: mediaKey || undefined,
+              mimetype: mimetype || undefined,
+              directPath: content?.directPath || undefined,
+            }),
+            signal: AbortSignal.timeout(20000),
+          })
+          const respCt = r.headers.get('content-type') || ''
+          console.log('[rehost] UazAPI download status:', r.status, 'ct:', respCt)
+          if (r.ok) {
+            if (respCt.includes('audio') || respCt.includes('octet') || respCt.includes('ogg') || respCt.includes('mpeg')) {
+              buf = Buffer.from(await r.arrayBuffer())
+              ct = respCt.split(';')[0].trim()
+              ext = ct.includes('ogg') ? 'ogg' : ct.includes('mp4') ? 'm4a' : ct.includes('mpeg') || ct.includes('mp3') ? 'mp3' : ct.includes('aac') ? 'aac' : 'ogg'
+              console.log('[rehost] UazAPI áudio ok, size:', buf.length, 'ct:', ct)
+            } else {
+              // Resposta JSON — pode ter base64 ou URL
+              const json = await r.json()
+              console.log('[rehost] UazAPI json keys:', Object.keys(json))
+              if (json.data && typeof json.data === 'string') {
+                buf = Buffer.from(json.data, 'base64')
+                ct = json.mimetype || (mimetype ? mimetype.split(';')[0].trim() : 'audio/ogg')
+                ext = ct.includes('ogg') ? 'ogg' : ct.includes('mp4') ? 'm4a' : 'ogg'
+                console.log('[rehost] UazAPI json base64, size:', buf.length)
+              } else if (json.url) {
+                // Retornou URL pública diretamente — usa ela
+                console.log('[rehost] UazAPI retornou URL:', json.url)
+                return json.url
+              } else {
+                console.log('[rehost] UazAPI json sem data/url:', JSON.stringify(json).substring(0, 200))
+              }
+            }
+          } else {
+            const errText = await r.text()
+            console.error('[rehost] UazAPI download erro:', r.status, errText.substring(0, 200))
+          }
+        } catch (e) {
+          console.error('[rehost] UazAPI download exceção:', e.message)
+        }
+      }
+    }
+
+    // Para imagens (e fallback de áudio): CDN + descriptografia HKDF
+    if (!buf && url && mediaKey) {
+      // mms3=true faz o CDN retornar apenas o sidecar (26 bytes) para PTT — não funciona.
+      // Remove o parâmetro para forçar download do arquivo inteiro (funciona para imagens).
       let cleanUrl = url
       try {
         const u = new URL(url)
@@ -84,34 +139,37 @@ async function rehostMedia(url, mediaType, messageid, mediaKey = null, jpegThumb
 
       let encBuf = null
       for (let attempt = 0; attempt < 2; attempt++) {
-        const fetchUrl = attempt === 0 ? cleanUrl : url // 2ª tentativa com URL original
-        const r = await fetch(fetchUrl, { headers: cdnHeaders, signal: AbortSignal.timeout(10000) })
+        const fetchUrl = attempt === 0 ? cleanUrl : url
+        const r = await fetch(fetchUrl, {
+          headers: { 'User-Agent': 'WhatsApp/2.23.24.82 A', 'Accept': '*/*' },
+          signal: AbortSignal.timeout(10000),
+        })
         if (!r.ok) { console.error('[rehost] CDN status:', r.status); break }
         encBuf = Buffer.from(await r.arrayBuffer())
         console.log(`[rehost] tentativa ${attempt+1} enc size:`, encBuf.length)
         if (encBuf.length > 100) break
         await new Promise(r2 => setTimeout(r2, 1000))
       }
-      if (encBuf && encBuf.length > 0) {
+      if (encBuf && encBuf.length > 100) {
         console.log('[rehost] enc size:', encBuf.length, 'mediaType:', mediaType)
         try {
           buf = decryptWhatsAppMedia(encBuf, mediaKey, mediaType)
-          // Usa mimetype real do WhatsApp quando disponível (ex: audio/mp4 no iOS)
           ct = mimetype && mimetype !== 'application/octet-stream' ? mimetype
             : mediaType === 'image' ? 'image/jpeg'
-            : (mediaType === 'ptt' || mediaType === 'audio') ? 'audio/ogg'
+            : isPtt ? 'audio/ogg'
             : mediaType === 'video' ? 'video/mp4'
             : 'application/octet-stream'
+          ct = ct.split(';')[0].trim()
           ext = ct.includes('jpeg') || ct.includes('jpg') ? 'jpg'
             : ct.includes('png') ? 'png'
             : ct.includes('webp') ? 'webp'
             : ct.includes('ogg') ? 'ogg'
-            : ct.includes('mp4') && mediaType !== 'video' ? 'm4a'
-            : ct.includes('mp4') ? 'mp4'
+            : ct.includes('mp4') && !isPtt ? 'mp4'
+            : ct.includes('mp4') ? 'm4a'
             : ct.includes('mpeg') || ct.includes('mp3') ? 'mp3'
             : ct.includes('aac') ? 'aac'
             : mediaType === 'image' ? 'jpg'
-            : (mediaType === 'ptt' || mediaType === 'audio') ? 'ogg'
+            : isPtt ? 'ogg'
             : 'bin'
           console.log('[rehost] descriptografado ok, size:', buf.length, 'ct:', ct, 'ext:', ext)
         } catch (decErr) {
@@ -119,11 +177,11 @@ async function rehostMedia(url, mediaType, messageid, mediaKey = null, jpegThumb
           buf = null
         }
       } else {
-        console.error('[rehost] CDN não retornou dados após retries')
+        console.error('[rehost] CDN não retornou dados suficientes:', encBuf?.length ?? 0, 'bytes')
       }
     }
 
-    // Fallback para thumbnail se descriptografia falhar
+    // Fallback para thumbnail se descriptografia falhar (só imagens)
     if (!buf && jpegThumbnail && mediaType === 'image') {
       buf = Buffer.from(jpegThumbnail, 'base64')
       ct = 'image/jpeg'
@@ -225,10 +283,10 @@ export async function POST(req) {
       return NextResponse.json({ ok: true })
     }
 
-    // Busca agente pela instância — pega também webhook_path para relay N8N
+    // Busca agente pela instância — pega também webhook_path para relay N8N e token UazAPI
     const { data: agente } = await supabaseAdmin
       .from('agentes')
-      .select('id, webhook_path')
+      .select('id, webhook_path, uazapi_token')
       .eq('instancia_wpp', instanceName)
       .single()
 
@@ -243,11 +301,12 @@ export async function POST(req) {
     const createdAt = messageTimestamp ? new Date(messageTimestamp).toISOString() : new Date().toISOString()
 
     // Re-hospeda mídia no Supabase Storage
-    // Baixa do CDN e descriptografa com mediaKey (chave E2E), fallback para thumbnail
+    // PTT: usa UazAPI /message/download; imagens: CDN + decrypt HKDF; fallback thumbnail
     let finalMediaUrl = mediaUrl
     if (mediaUrl || jpegThumbnail) {
       const mid = messageid || `tmp_${Date.now()}`
-      finalMediaUrl = await rehostMedia(mediaUrl, mediaType, mid, mediaKey, jpegThumbnail, mimetype)
+      const rawContent = typeof msg.content === 'object' ? msg.content : null
+      finalMediaUrl = await rehostMedia(mediaUrl, mediaType, mid, mediaKey, jpegThumbnail, mimetype, agente?.uazapi_token, rawContent)
     }
 
     // Salva em chat_messages (message_id garante deduplicação)
