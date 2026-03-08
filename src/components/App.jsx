@@ -131,26 +131,68 @@ function LoginPage({ onLogin }) {
 // SIDEBAR
 // ============================================================
 function Sidebar({ user, activeTab, onTabChange, onLogout }) {
+  const [collapsed, setCollapsed] = useState(false)
   const isAdmin = user.role === "admin"
   const tabs = isAdmin
-    ? [{ id: "clientes", label: "Clientes", icon: "◷" }]
-    : [{ id: "kanban", label: "Leads", icon: "◫" }, { id: "chat", label: "Chat", icon: "💬" }, { id: "config", label: "Configurações", icon: "⚙" }]
+    ? [{ id: "clientes", label: "Clientes", icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> }]
+    : [
+        { id: "kanban", label: "Leads", icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="10" rx="1"/><rect x="14" y="17" width="7" height="4" rx="1"/></svg> },
+        { id: "chat", label: "Chat", icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> },
+        { id: "config", label: "Configurações", icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> },
+      ]
+
+  const w = collapsed ? 64 : 220
+
   return (
-    <div style={{ width: 220, height: "100vh", background: co.bgCard, borderRight: `1px solid ${co.border}`, display: "flex", flexDirection: "column", padding: "20px 12px", boxSizing: "border-box", flexShrink: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 8px", marginBottom: 32 }}>
-        <div style={{ width: 32, height: 32, borderRadius: 8, background: `linear-gradient(135deg, ${co.primary}, ${co.purple})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, color: "#fff", flexShrink: 0 }}>IA</div>
-        <div><div style={{ color: co.text, fontSize: 13, fontWeight: 600 }}>Qualificação</div><div style={{ color: co.textDim, fontSize: 10, fontWeight: 500 }}>{isAdmin ? "ADMIN" : "CLIENTE"}</div></div>
+    <div style={{ width: w, minWidth: w, height: "100vh", background: co.bgCard, borderRight: `1px solid ${co.border}`, display: "flex", flexDirection: "column", padding: collapsed ? "20px 8px" : "20px 12px", boxSizing: "border-box", flexShrink: 0, transition: "width 0.22s ease, min-width 0.22s ease", overflow: "hidden" }}>
+
+      {/* LOGO + TOGGLE */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: collapsed ? "center" : "space-between", marginBottom: 32, minHeight: 36 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: collapsed ? 0 : 10, overflow: "hidden" }}>
+          <div style={{ width: 32, height: 32, borderRadius: 8, background: `linear-gradient(135deg, ${co.primary}, ${co.purple})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, color: "#fff", flexShrink: 0 }}>IA</div>
+          {!collapsed && <div style={{ overflow: "hidden" }}><div style={{ color: co.text, fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}>Qualificação</div><div style={{ color: co.textDim, fontSize: 10, fontWeight: 500 }}>{isAdmin ? "ADMIN" : "CLIENTE"}</div></div>}
+        </div>
+        {!collapsed && (
+          <button onClick={() => setCollapsed(true)} title="Recolher menu"
+            style={{ background: "none", border: `1px solid ${co.border}`, borderRadius: 6, color: co.textDim, cursor: "pointer", width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 13 }}>
+            ‹
+          </button>
+        )}
       </div>
+
+      {/* EXPAND BUTTON when collapsed */}
+      {collapsed && (
+        <button onClick={() => setCollapsed(false)} title="Expandir menu"
+          style={{ width: "100%", marginBottom: 20, padding: "6px 0", background: "none", border: `1px solid ${co.border}`, borderRadius: 6, color: co.textDim, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13 }}>
+          ›
+        </button>
+      )}
+
+      {/* NAV ITEMS */}
       <div style={{ flex: 1 }}>
         {tabs.map((t) => (
-          <button key={t.id} onClick={() => onTabChange(t.id)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", marginBottom: 2, borderRadius: 8, border: "none", background: activeTab === t.id ? co.primaryBg : "transparent", color: activeTab === t.id ? co.primary : co.textMuted, cursor: "pointer", fontSize: 13, fontWeight: 500, fontFamily: "inherit", textAlign: "left" }}>
-            <span style={{ fontSize: 16, width: 20, textAlign: "center" }}>{t.icon}</span>{t.label}
+          <button key={t.id} onClick={() => onTabChange(t.id)} title={collapsed ? t.label : ''}
+            style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: collapsed ? "center" : "flex-start", gap: collapsed ? 0 : 10, padding: collapsed ? "10px 0" : "10px 12px", marginBottom: 2, borderRadius: 8, border: "none", background: activeTab === t.id ? co.primaryBg : "transparent", color: activeTab === t.id ? co.primary : co.textMuted, cursor: "pointer", fontSize: 13, fontWeight: 500, fontFamily: "inherit" }}>
+            <span style={{ flexShrink: 0, display: "flex" }}>{t.icon}</span>
+            {!collapsed && <span style={{ whiteSpace: "nowrap" }}>{t.label}</span>}
           </button>
         ))}
       </div>
+
+      {/* FOOTER */}
       <div style={{ borderTop: `1px solid ${co.border}`, paddingTop: 16 }}>
-        <div style={{ padding: "0 12px", marginBottom: 12 }}><div style={{ color: co.text, fontSize: 13, fontWeight: 500 }}>{user.nome}</div><div style={{ color: co.textDim, fontSize: 11 }}>{user.email}</div></div>
-        <button onClick={onLogout} style={{ width: "100%", padding: "8px 12px", background: "transparent", border: `1px solid ${co.border}`, borderRadius: 8, color: co.textMuted, cursor: "pointer", fontSize: 12, fontFamily: "inherit", fontWeight: 500 }}>Sair</button>
+        {!collapsed && (
+          <div style={{ padding: "0 8px", marginBottom: 12, overflow: "hidden" }}>
+            <div style={{ color: co.text, fontSize: 13, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{user.nome}</div>
+            <div style={{ color: co.textDim, fontSize: 11, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{user.email}</div>
+          </div>
+        )}
+        <button onClick={onLogout} title={collapsed ? "Sair" : ""}
+          style={{ width: "100%", padding: collapsed ? "8px 0" : "8px 12px", background: "transparent", border: `1px solid ${co.border}`, borderRadius: 8, color: co.textMuted, cursor: "pointer", fontSize: 12, fontFamily: "inherit", fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+          {collapsed
+            ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            : "Sair"}
+        </button>
       </div>
     </div>
   )
@@ -172,6 +214,24 @@ function KanbanView({ clienteId }) {
   const [showGerenciar, setShowGerenciar] = useState(false)
   const [etapasEdit, setEtapasEdit] = useState([])
   const [savingEtapas, setSavingEtapas] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+  const [searchLeads, setSearchLeads] = useState('')
+  const [showNovoLead, setShowNovoLead] = useState(false)
+  const [novoLead, setNovoLead] = useState({ nome: '', telefone: '', nicho: '', etapa_id: '', resumo: '' })
+  const [savingNovoLead, setSavingNovoLead] = useState(false)
+  const [erroNovoLead, setErroNovoLead] = useState('')
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return
+      if (editingLead) { setEditingLead(null); return }
+      if (showNovoLead) { setShowNovoLead(false); return }
+      if (selectedLead) { setSelectedLead(null); return }
+      if (showGerenciar) { setShowGerenciar(false); return }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [editingLead, showNovoLead, selectedLead, showGerenciar])
 
   // Carrega agentes do cliente
   useEffect(() => {
@@ -189,16 +249,18 @@ function KanbanView({ clienteId }) {
   }, [clienteId])
 
   // Carrega etapas + leads quando agente muda
-  useEffect(() => {
-    if (!activeAgente) return
-    Promise.all([
-      supabase.from('etapas_funil').select('*').eq('agente_id', activeAgente).order('ordem'),
-      supabase.from('leads').select('*').eq('agente_id', activeAgente).order('created_at', { ascending: false }),
-    ]).then(([{ data: et }, { data: ld }]) => {
-      setEtapas(et || [])
-      setLeads(ld || [])
-    })
-  }, [activeAgente])
+  const reloadLeads = async (agenteId, showSpinner = false) => {
+    if (!agenteId) return
+    if (showSpinner) setRefreshing(true)
+    const [{ data: et }, { data: ld }] = await Promise.all([
+      supabase.from('etapas_funil').select('*').eq('agente_id', agenteId).order('ordem'),
+      supabase.from('leads').select('*').eq('agente_id', agenteId).order('created_at', { ascending: false }),
+    ])
+    setEtapas(et || [])
+    setLeads(ld || [])
+    if (showSpinner) setRefreshing(false)
+  }
+  useEffect(() => { reloadLeads(activeAgente) }, [activeAgente])
 
   const handleDrop = async (etapaId) => {
     if (!dragItem) return
@@ -213,6 +275,7 @@ function KanbanView({ clienteId }) {
 
   const openGerenciar = () => {
     setEtapasEdit([...etapas])
+    setEtapaErro(null)
     setShowGerenciar(true)
   }
 
@@ -221,14 +284,39 @@ function KanbanView({ clienteId }) {
     setEtapasEdit(prev => [...prev, { id: 'et_' + Date.now(), agente_id: activeAgente, nome: 'Nova Etapa', cor: '#6366F1', ordem: mx + 1 }])
   }
 
-  const updateEtapaEdit = (id, f, v) => setEtapasEdit(prev => prev.map(e => e.id === id ? { ...e, [f]: v } : e))
-  const removeEtapaEdit = (id) => { if (etapasEdit.length > 1) setEtapasEdit(prev => prev.filter(e => e.id !== id)) }
+  const ETAPAS_FIXAS = ['Atendimento (IA)', 'Qualificado']
+  const isEtapaFixa = (et) => ETAPAS_FIXAS.includes(et.nome)
+
+  const updateEtapaEdit = (id, f, v) => {
+    const et = etapasEdit.find(e => e.id === id)
+    if (et && isEtapaFixa(et) && (f === 'nome' || f === 'cor')) return
+    setEtapasEdit(prev => prev.map(e => e.id === id ? { ...e, [f]: v } : e))
+  }
+  const [etapaErro, setEtapaErro] = useState(null)
+
+  const removeEtapaEdit = (id) => {
+    const et = etapasEdit.find(e => e.id === id)
+    if (!et || isEtapaFixa(et) || etapasEdit.length <= 1) return
+    const leadsNaEtapa = leads.filter(l => l.etapa_id === id).length
+    if (leadsNaEtapa > 0) {
+      setEtapaErro({ nome: et.nome, count: leadsNaEtapa })
+      return
+    }
+    setEtapaErro(null)
+    setEtapasEdit(prev => prev.filter(e => e.id !== id))
+  }
 
   const saveEtapas = async () => {
     setSavingEtapas(true)
     const originalIds = etapas.map(e => e.id)
     const currentIds = etapasEdit.filter(e => !e.id.startsWith('et_')).map(e => e.id)
-    const deletedIds = originalIds.filter(id => !currentIds.includes(id))
+    const deletedIds = originalIds.filter(id => {
+      if (!currentIds.includes(id)) {
+        const et = etapas.find(e => e.id === id)
+        return et && !isEtapaFixa(et)
+      }
+      return false
+    })
 
     if (deletedIds.length) {
       await supabase.from('etapas_funil').delete().in('id', deletedIds)
@@ -236,6 +324,8 @@ function KanbanView({ clienteId }) {
     for (const et of etapasEdit) {
       if (et.id.startsWith('et_')) {
         await supabase.from('etapas_funil').insert({ agente_id: activeAgente, nome: et.nome, cor: et.cor, ordem: et.ordem })
+      } else if (isEtapaFixa(et)) {
+        // etapas fixas: não atualizar nome nem cor
       } else {
         await supabase.from('etapas_funil').update({ nome: et.nome, cor: et.cor }).eq('id', et.id)
       }
@@ -269,16 +359,68 @@ function KanbanView({ clienteId }) {
     setEditingLead(null)
   }
 
+  const createLead = async () => {
+    if (!novoLead.nome.trim()) { setErroNovoLead('Nome é obrigatório.'); return }
+    if (!novoLead.telefone.trim()) { setErroNovoLead('Telefone é obrigatório.'); return }
+    setErroNovoLead('')
+    setSavingNovoLead(true)
+    const primeiraEtapa = [...etapas].sort((a, b) => a.ordem - b.ordem)[0]
+    try {
+      const res = await fetch('/api/leads/criar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          agente_id: activeAgente,
+          cliente_id: clienteId,
+          nome: novoLead.nome.trim(),
+          telefone: novoLead.telefone.trim(),
+          nicho: novoLead.nicho.trim() || null,
+          etapa_id: novoLead.etapa_id || primeiraEtapa?.id || null,
+          resumo: novoLead.resumo.trim() || null,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) { setErroNovoLead('Erro ao criar lead: ' + (json.error || res.status)); return }
+      setLeads(prev => [json.lead, ...prev])
+      setShowNovoLead(false)
+      setNovoLead({ nome: '', telefone: '', nicho: '', etapa_id: '', resumo: '' })
+    } catch (e) {
+      setErroNovoLead('Erro ao criar lead: ' + e.message)
+    } finally {
+      setSavingNovoLead(false)
+    }
+  }
+
   if (loading) return <Loading />
 
   return (
     <div style={{ padding: 28, height: "100vh", boxSizing: "border-box", display: "flex", flexDirection: "column" }}>
-      <div style={{ marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div>
+      <div style={{ marginBottom: 16, display: "flex", alignItems: "center", gap: 16 }}>
+        <div style={{ flexShrink: 0 }}>
           <h2 style={{ color: co.text, fontSize: 20, fontWeight: 700, margin: 0 }}>Leads</h2>
           <p style={{ color: co.textMuted, fontSize: 13, margin: "4px 0 0" }}>{leads.length} leads no funil</p>
         </div>
-        <Btn variant="ghost" size="sm" onClick={openGerenciar}>⚙ Gerenciar Etapas</Btn>
+        <div style={{ flex: 1, position: "relative" }}>
+          <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: co.textDim, fontSize: 14, pointerEvents: "none" }}>🔍</span>
+          <input
+            value={searchLeads}
+            onChange={e => setSearchLeads(e.target.value)}
+            placeholder="Busca rápida: nome ou telefone..."
+            style={{ width: "100%", padding: "9px 14px 9px 36px", background: co.bgInput, border: `1px solid ${searchLeads ? co.borderFocus : co.border}`, borderRadius: 10, color: co.text, fontSize: 13, outline: "none", fontFamily: "inherit", boxSizing: "border-box", transition: "border-color 0.2s" }}
+            onFocus={e => e.target.style.borderColor = co.borderFocus}
+            onBlur={e => e.target.style.borderColor = searchLeads ? co.borderFocus : co.border}
+          />
+          {searchLeads && (
+            <button onClick={() => setSearchLeads('')} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: co.textDim, fontSize: 16, cursor: "pointer", lineHeight: 1 }}>×</button>
+          )}
+        </div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+          <button onClick={() => reloadLeads(activeAgente, true)} disabled={refreshing} title="Atualizar" style={{ width: 34, height: 34, borderRadius: 8, background: refreshing ? co.primaryBg : co.bgCard, border: `1px solid ${refreshing ? co.primary : co.border}`, color: refreshing ? co.primary : co.textMuted, fontSize: 15, cursor: refreshing ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}>
+            <span className={refreshing ? "spinning" : ""}>↻</span>
+          </button>
+          <Btn size="sm" onClick={() => { setNovoLead({ nome: '', telefone: '', nicho: '', etapa_id: etapas.sort((a,b)=>a.ordem-b.ordem)[0]?.id || '', resumo: '' }); setErroNovoLead(''); setShowNovoLead(true) }}>+ Adicionar Lead</Btn>
+          <Btn variant="ghost" size="sm" onClick={openGerenciar}>⚙ Gerenciar Etapas</Btn>
+        </div>
       </div>
 
       {agentes.length > 1 && (
@@ -292,8 +434,14 @@ function KanbanView({ clienteId }) {
       )}
 
       <div style={{ display: "flex", gap: 16, flex: 1, overflowX: "auto", paddingBottom: 16 }}>
-        {etapas.sort((a, b) => a.ordem - b.ordem).map(etapa => {
-          const el = leads.filter(l => l.etapa_id === etapa.id)
+        {[...etapas].sort((a, b) => {
+          const FIXAS = ['Atendimento (IA)', 'Qualificado']
+          const ai = FIXAS.indexOf(a.nome) >= 0 ? FIXAS.indexOf(a.nome) : 99 + a.ordem
+          const bi = FIXAS.indexOf(b.nome) >= 0 ? FIXAS.indexOf(b.nome) : 99 + b.ordem
+          return ai - bi
+        }).map(etapa => {
+          const q = searchLeads.toLowerCase()
+          const el = leads.filter(l => l.etapa_id === etapa.id && (!q || (l.nome||'').toLowerCase().includes(q) || (l.telefone||'').includes(q)))
           return (
             <div key={etapa.id} onDragOver={e => e.preventDefault()} onDrop={() => handleDrop(etapa.id)}
               style={{ minWidth: 280, width: 280, display: "flex", flexDirection: "column", background: co.bg, borderRadius: 12, border: `1px solid ${co.border}`, overflow: "hidden", flexShrink: 0 }}>
@@ -326,37 +474,14 @@ function KanbanView({ clienteId }) {
         {etapas.length === 0 && <div style={{ color: co.textMuted, fontSize: 14 }}>Nenhuma etapa configurada para este agente.</div>}
       </div>
 
-      {/* MODAL — DETALHE DO LEAD */}
+      {/* DRAWER — DETALHE DO LEAD + CHAT */}
       {selectedLead && (
-        <div onClick={() => setSelectedLead(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
-          <div onClick={e => e.stopPropagation()} style={{ width: 500, maxHeight: "80vh", overflow: "auto", background: co.bgCard, borderRadius: 16, border: `1px solid ${co.border}`, padding: 28, boxShadow: "0 25px 60px rgba(0,0,0,0.5)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", marginBottom: 20 }}>
-              <div>
-                <h3 style={{ color: co.text, fontSize: 18, fontWeight: 700, margin: 0 }}>{selectedLead.nome || selectedLead.telefone}</h3>
-                <p style={{ color: co.textMuted, fontSize: 13, margin: "4px 0 0" }}>{selectedLead.telefone?.replace(/(\d{2})(\d{2})(\d{5})(\d{4})/, "+$1 ($2) $3-$4")}</p>
-              </div>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <Btn size="sm" variant="ghost" onClick={() => { setEditingLead({ ...selectedLead }); setSelectedLead(null) }}>✎ Editar</Btn>
-                <button onClick={() => setSelectedLead(null)} style={{ background: "none", border: "none", color: co.textMuted, fontSize: 20, cursor: "pointer" }}>×</button>
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
-              <Badge color="primary">{selectedLead.status}</Badge>
-              {selectedLead.nicho && <Badge color="purple">{selectedLead.nicho}</Badge>}
-              <Badge color="purple">{selectedLead.created_at?.slice(0, 10)}</Badge>
-            </div>
-            {selectedLead.resumo ? (
-              <div style={{ background: co.bg, borderRadius: 10, padding: 16, border: `1px solid ${co.border}` }}>
-                <div style={{ color: co.textDim, fontSize: 11, fontWeight: 600, marginBottom: 10 }}>RESUMO DA QUALIFICAÇÃO</div>
-                <p style={{ color: co.text, fontSize: 13, lineHeight: 1.7, margin: 0, whiteSpace: "pre-wrap" }}>{selectedLead.resumo}</p>
-              </div>
-            ) : (
-              <div style={{ background: co.bg, borderRadius: 10, padding: 20, textAlign: "center", border: `1px solid ${co.border}` }}>
-                <p style={{ color: co.textMuted, fontSize: 13, margin: 0 }}>Qualificação em andamento...</p>
-              </div>
-            )}
-          </div>
-        </div>
+        <LeadDrawer
+          lead={selectedLead}
+          onClose={() => setSelectedLead(null)}
+          onEdit={() => { setEditingLead({ ...selectedLead }); setSelectedLead(null) }}
+          onDelete={(id) => setLeads(prev => prev.filter(l => l.id !== id))}
+        />
       )}
 
       {/* MODAL — EDITAR LEAD */}
@@ -407,6 +532,59 @@ function KanbanView({ clienteId }) {
         </div>
       )}
 
+      {/* MODAL — NOVO LEAD */}
+      {showNovoLead && (
+        <div onClick={() => setShowNovoLead(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: 520, maxHeight: "85vh", overflow: "auto", background: co.bgCard, borderRadius: 16, border: `1px solid ${co.border}`, padding: 28, boxShadow: "0 25px 60px rgba(0,0,0,0.5)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+              <div>
+                <h3 style={{ color: co.text, fontSize: 18, fontWeight: 700, margin: 0 }}>Adicionar Lead</h3>
+                <p style={{ color: co.textMuted, fontSize: 12, margin: "4px 0 0" }}>Nome e telefone são obrigatórios</p>
+              </div>
+              <button onClick={() => setShowNovoLead(false)} style={{ background: "none", border: "none", color: co.textMuted, fontSize: 20, cursor: "pointer" }}>×</button>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div>
+                <label style={{ display: "block", fontSize: 12, color: co.textMuted, marginBottom: 6, fontWeight: 500 }}>NOME <span style={{ color: co.danger }}>*</span></label>
+                <input value={novoLead.nome} onChange={e => setNovoLead(p => ({ ...p, nome: e.target.value }))} placeholder="Ex: João Silva"
+                  style={{ width: "100%", padding: "10px 14px", background: co.bgInput, border: `1px solid ${!novoLead.nome.trim() && erroNovoLead ? co.danger : co.border}`, borderRadius: 8, color: co.text, fontSize: 13, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }} />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: 12, color: co.textMuted, marginBottom: 6, fontWeight: 500 }}>TELEFONE <span style={{ color: co.danger }}>*</span></label>
+                <input value={novoLead.telefone} onChange={e => setNovoLead(p => ({ ...p, telefone: e.target.value }))} placeholder="5547999990000"
+                  style={{ width: "100%", padding: "10px 14px", background: co.bgInput, border: `1px solid ${!novoLead.telefone.trim() && erroNovoLead ? co.danger : co.border}`, borderRadius: 8, color: co.text, fontSize: 13, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }} />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: 12, color: co.textMuted, marginBottom: 6, fontWeight: 500 }}>NICHO / TIPO <span style={{ color: co.textDim, fontSize: 11 }}>(opcional)</span></label>
+                <input value={novoLead.nicho} onChange={e => setNovoLead(p => ({ ...p, nicho: e.target.value }))} placeholder="Ex: Trabalhista"
+                  style={{ width: "100%", padding: "10px 14px", background: co.bgInput, border: `1px solid ${co.border}`, borderRadius: 8, color: co.text, fontSize: 13, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }} />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: 12, color: co.textMuted, marginBottom: 6, fontWeight: 500 }}>ETAPA DO FUNIL <span style={{ color: co.textDim, fontSize: 11 }}>(opcional)</span></label>
+                <select value={novoLead.etapa_id} onChange={e => setNovoLead(p => ({ ...p, etapa_id: e.target.value }))}
+                  style={{ width: "100%", padding: "10px 14px", background: co.bgInput, border: `1px solid ${co.border}`, borderRadius: 8, color: co.text, fontSize: 13, outline: "none", fontFamily: "inherit", boxSizing: "border-box", cursor: "pointer" }}>
+                  {etapas.sort((a,b) => a.ordem - b.ordem).map(et => <option key={et.id} value={et.id}>{et.nome}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: 12, color: co.textMuted, marginBottom: 6, fontWeight: 500 }}>RESUMO <span style={{ color: co.textDim, fontSize: 11 }}>(opcional)</span></label>
+                <textarea value={novoLead.resumo} onChange={e => setNovoLead(p => ({ ...p, resumo: e.target.value }))} rows={4} placeholder="Informações relevantes sobre o lead..."
+                  style={{ width: "100%", padding: "10px 14px", background: co.bgInput, border: `1px solid ${co.border}`, borderRadius: 8, color: co.text, fontSize: 13, outline: "none", fontFamily: "inherit", boxSizing: "border-box", resize: "vertical", lineHeight: 1.6 }} />
+              </div>
+            </div>
+            {erroNovoLead && (
+              <div style={{ marginTop: 12, padding: "10px 14px", background: co.dangerBg, border: `1px solid ${co.danger}`, borderRadius: 8, color: co.danger, fontSize: 13 }}>
+                {erroNovoLead}
+              </div>
+            )}
+            <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
+              <Btn variant="ghost" onClick={() => setShowNovoLead(false)} style={{ flex: 1 }}>Cancelar</Btn>
+              <Btn onClick={createLead} disabled={savingNovoLead} style={{ flex: 2 }}>{savingNovoLead ? "Criando..." : "Criar Lead"}</Btn>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MODAL — GERENCIAR ETAPAS */}
       {showGerenciar && (
         <div onClick={() => setShowGerenciar(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
@@ -419,19 +597,41 @@ function KanbanView({ clienteId }) {
               <button onClick={() => setShowGerenciar(false)} style={{ background: "none", border: "none", color: co.textMuted, fontSize: 20, cursor: "pointer" }}>×</button>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
-              {etapasEdit.sort((a, b) => a.ordem - b.ordem).map(et => (
-                <div key={et.id} style={{ display: "flex", alignItems: "center", gap: 10, background: co.bg, borderRadius: 10, padding: "10px 14px", border: `1px solid ${co.border}` }}>
-                  <span style={{ color: co.textDim, fontSize: 12, fontWeight: 700, width: 20, textAlign: "center" }}>{et.ordem}</span>
-                  <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
-                    {corOpts.map(cor => <div key={cor} onClick={() => updateEtapaEdit(et.id, "cor", cor)} style={{ width: 16, height: 16, borderRadius: 4, background: cor, cursor: "pointer", border: et.cor === cor ? "2px solid #fff" : "2px solid transparent" }} />)}
+              {etapasEdit.sort((a, b) => a.ordem - b.ordem).map(et => {
+                const fixa = isEtapaFixa(et)
+                return (
+                  <div key={et.id} style={{ display: "flex", alignItems: "center", gap: 10, background: fixa ? co.bgHover : co.bg, borderRadius: 10, padding: "10px 14px", border: `1px solid ${fixa ? co.borderFocus : co.border}`, opacity: fixa ? 1 : 1 }}>
+                    <span style={{ color: co.textDim, fontSize: 12, fontWeight: 700, width: 20, textAlign: "center" }}>{et.ordem}</span>
+                    {fixa ? (
+                      <div style={{ width: 16, height: 16, borderRadius: 4, background: et.cor, flexShrink: 0, border: "2px solid rgba(255,255,255,0.2)" }} />
+                    ) : (
+                      <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                        {corOpts.map(cor => <div key={cor} onClick={() => updateEtapaEdit(et.id, "cor", cor)} style={{ width: 16, height: 16, borderRadius: 4, background: cor, cursor: "pointer", border: et.cor === cor ? "2px solid #fff" : "2px solid transparent" }} />)}
+                      </div>
+                    )}
+                    <input value={et.nome} readOnly={fixa} onChange={e => updateEtapaEdit(et.id, "nome", e.target.value)}
+                      style={{ flex: 1, padding: "6px 10px", background: fixa ? co.bg : co.bgInput, border: `1px solid ${co.border}`, borderRadius: 6, color: fixa ? co.textMuted : co.text, fontSize: 13, outline: "none", fontFamily: "inherit", cursor: fixa ? "default" : "text" }} />
+                    {fixa ? (
+                      <span title="Etapa fixa — não pode ser removida" style={{ fontSize: 14, opacity: 0.4, padding: "2px 6px" }}>🔒</span>
+                    ) : (
+                      <button onClick={() => removeEtapaEdit(et.id)}
+                        style={{ background: "none", border: "none", color: co.textDim, cursor: "pointer", fontSize: 16, padding: "2px 6px" }}>✕</button>
+                    )}
                   </div>
-                  <input value={et.nome} onChange={e => updateEtapaEdit(et.id, "nome", e.target.value)}
-                    style={{ flex: 1, padding: "6px 10px", background: co.bgInput, border: `1px solid ${co.border}`, borderRadius: 6, color: co.text, fontSize: 13, outline: "none", fontFamily: "inherit" }} />
-                  <button onClick={() => removeEtapaEdit(et.id)} disabled={etapasEdit.length <= 1}
-                    style={{ background: "none", border: "none", color: co.textDim, cursor: etapasEdit.length <= 1 ? "not-allowed" : "pointer", fontSize: 16, opacity: etapasEdit.length <= 1 ? 0.3 : 1, padding: "2px 6px" }}>✕</button>
-                </div>
-              ))}
+                )
+              })}
             </div>
+            {etapaErro && (
+              <div style={{ background: co.dangerBg, border: `1px solid ${co.danger}`, borderRadius: 10, padding: "12px 16px", marginBottom: 4 }}>
+                <div style={{ color: co.danger, fontWeight: 700, fontSize: 13, marginBottom: 4 }}>
+                  ⚠ Não é possível excluir "{etapaErro.nome}"
+                </div>
+                <div style={{ color: co.text, fontSize: 12, lineHeight: 1.6 }}>
+                  Esta etapa possui <strong>{etapaErro.count} lead{etapaErro.count > 1 ? 's' : ''}</strong>. Para excluí-la, mova {etapaErro.count > 1 ? 'os leads' : 'o lead'} para outra etapa primeiro usando o Kanban.
+                </div>
+                <button onClick={() => setEtapaErro(null)} style={{ marginTop: 8, background: "none", border: `1px solid ${co.danger}`, color: co.danger, borderRadius: 6, padding: "4px 12px", fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>Entendi</button>
+              </div>
+            )}
             <div style={{ display: "flex", gap: 10 }}>
               <Btn variant="ghost" size="sm" onClick={addEtapaEdit} style={{ flex: 1 }}>+ Adicionar Etapa</Btn>
               <Btn size="sm" onClick={saveEtapas} disabled={savingEtapas} style={{ flex: 1 }}>{savingEtapas ? "Salvando..." : "Salvar"}</Btn>
@@ -906,6 +1106,305 @@ function PttPlayer({ messageId, agenteId, content, hostedUrl, isRight, phoneNumb
 }
 
 // ============================================================
+// LEAD DRAWER — Detalhes + Chat inline (Aba Leads)
+// ============================================================
+function LeadDrawer({ lead, onClose, onEdit, onDelete }) {
+  const [messages, setMessages] = useState([])
+  const [inputText, setInputText] = useState('')
+  const [resumoAberto, setResumoAberto] = useState(false)
+  const [sending, setSending] = useState(false)
+  const [recording, setRecording] = useState(false)
+  const [lightboxUrl, setLightboxUrl] = useState(null)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  const deleteLead = async () => {
+    setDeleting(true)
+    try {
+      const res = await fetch('/api/leads/excluir', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId: lead.id }),
+      })
+      if (res.ok) { onDelete(lead.id); onClose() }
+      else { const j = await res.json(); console.error('[deleteLead]', j.error) }
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return
+      if (lightboxUrl) { setLightboxUrl(null); return }
+      onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [lightboxUrl, onClose])
+  const messagesEndRef = useRef(null)
+  const fileInputRef = useRef(null)
+  const mediaRecorderRef = useRef(null)
+  const audioChunksRef = useRef([])
+
+  const agenteId = lead?.agente_id || null
+  const telefone = lead?.telefone || null
+
+  // Polling de mensagens (2s)
+  useEffect(() => {
+    if (!telefone) return
+    let cancelled = false
+
+    const fetchMsgs = async () => {
+      try {
+        const res = await fetch(`/api/chat/historico?telefone=${telefone}`)
+        if (!res.ok || cancelled) return
+        const { messages: newMsgs } = await res.json()
+        if (cancelled || !newMsgs?.length) return
+        setMessages(prev => {
+          const prevIds = new Set(prev.filter(m => !String(m.id).startsWith('temp_')).map(m => m.id))
+          const hasNew = newMsgs.some(m => !prevIds.has(m.id))
+          if (!hasNew) return prev
+          const pendingTemps = prev.filter(m =>
+            String(m.id).startsWith('temp_') && !newMsgs.some(n => n.content === m.content)
+          )
+          return [...newMsgs, ...pendingTemps]
+        })
+      } catch (e) {
+        console.error('[LeadDrawer poll] erro:', e)
+      }
+    }
+
+    fetchMsgs()
+    const interval = setInterval(fetchMsgs, 2000)
+    return () => { cancelled = true; clearInterval(interval) }
+  }, [telefone])
+
+  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
+
+  const sendMessage = async (tipo, conteudo) => {
+    if (!agenteId || !telefone || !conteudo) return
+    const tempId = `temp_${Date.now()}`
+    setMessages(prev => [...prev, { id: tempId, type: 'agent', content: conteudo, mediaUrl: tipo !== 'text' ? conteudo : null, mediaType: tipo !== 'text' ? tipo : null }])
+    setSending(true)
+    try {
+      const res = await fetch('/api/chat/enviar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agenteId, telefone, tipo, conteudo }),
+      })
+      if (!res.ok) setMessages(prev => prev.filter(m => m.id !== tempId))
+    } finally {
+      setSending(false)
+    }
+  }
+
+  const sendText = async () => {
+    const text = inputText.trim()
+    if (!text || sending) return
+    setInputText('')
+    await sendMessage('text', text)
+  }
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      audioChunksRef.current = []
+      const mr = new MediaRecorder(stream)
+      mr.ondataavailable = e => { if (e.data.size > 0) audioChunksRef.current.push(e.data) }
+      mr.start()
+      mediaRecorderRef.current = mr
+      setRecording(true)
+    } catch {
+      alert('Permissão de microfone negada.')
+    }
+  }
+
+  const stopRecording = async () => {
+    if (!mediaRecorderRef.current) return
+    setRecording(false)
+    mediaRecorderRef.current.stop()
+    mediaRecorderRef.current.stream?.getTracks().forEach(t => t.stop())
+    await new Promise(r => { mediaRecorderRef.current.onstop = r })
+    const blob = new Blob(audioChunksRef.current, { type: 'audio/ogg; codecs=opus' })
+    const fileName = `ptt_${Date.now()}.ogg`
+    const { error } = await supabase.storage.from('chat-media').upload(fileName, blob, { contentType: 'audio/ogg' })
+    if (error) { console.error('Upload áudio:', error); return }
+    const { data: pub } = supabase.storage.from('chat-media').getPublicUrl(fileName)
+    await sendMessage('ptt', pub.publicUrl)
+  }
+
+  const sendMedia = async (file) => {
+    const tipo = file.type.startsWith('image/') ? 'image' : 'document'
+    const fileName = `${tipo}_${Date.now()}_${file.name}`
+    const { error } = await supabase.storage.from('chat-media').upload(fileName, file, { contentType: file.type })
+    if (error) { console.error('Upload mídia:', error); return }
+    const { data: pub } = supabase.storage.from('chat-media').getPublicUrl(fileName)
+    await sendMessage(tipo, pub.publicUrl)
+  }
+
+  const displayName = lead?.nome || lead?.telefone || '?'
+
+  return (
+    <>
+      {/* Overlay */}
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200 }} />
+
+      {/* Drawer */}
+      <div style={{ position: 'fixed', right: 0, top: 0, width: 700, height: '100vh', zIndex: 201, background: co.bgCard, borderLeft: `1px solid ${co.border}`, display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '-8px 0 40px rgba(0,0,0,0.5)' }}>
+
+        {/* Header do lead */}
+        <div style={{ padding: '16px 20px', borderBottom: `1px solid ${co.border}`, flexShrink: 0, background: co.bg }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: 10 }}>
+            <div>
+              <h3 style={{ color: co.text, fontSize: 16, fontWeight: 700, margin: 0 }}>{displayName}</h3>
+              <p style={{ color: co.textMuted, fontSize: 12, margin: '3px 0 0' }}>{lead?.telefone?.replace(/(\d{2})(\d{2})(\d{5})(\d{4})/, '+$1 ($2) $3-$4')}</p>
+            </div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              {confirmDelete ? (
+                <>
+                  <Btn size="sm" variant="danger" onClick={deleteLead} disabled={deleting} style={{ fontSize: 11 }}>
+                    {deleting ? 'Excluindo...' : '⚠ Confirmar exclusão'}
+                  </Btn>
+                  <button onClick={() => setConfirmDelete(false)} style={{ background: 'none', border: 'none', color: co.textMuted, fontSize: 16, cursor: 'pointer', lineHeight: 1 }}>×</button>
+                </>
+              ) : (
+                <button onClick={() => setConfirmDelete(true)} title="Excluir lead"
+                  style={{ width: 30, height: 30, borderRadius: 6, background: 'transparent', border: `1px solid ${co.border}`, color: co.textDim, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = co.danger; e.currentTarget.style.color = co.danger; e.currentTarget.style.background = co.dangerBg }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = co.border; e.currentTarget.style.color = co.textDim; e.currentTarget.style.background = 'transparent' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                  </svg>
+                </button>
+              )}
+              <Btn size="sm" variant="ghost" onClick={onEdit}>✎ Editar</Btn>
+              <button onClick={onClose} style={{ background: 'none', border: 'none', color: co.textMuted, fontSize: 22, cursor: 'pointer', lineHeight: 1 }}>×</button>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: lead?.resumo ? 12 : 0 }}>
+            <Badge color="primary">{lead?.status}</Badge>
+            {lead?.nicho && <Badge color="purple">{lead?.nicho}</Badge>}
+            <Badge color="purple">{lead?.created_at?.slice(0, 10)}</Badge>
+          </div>
+          {lead?.resumo && (
+            <div style={{ background: co.bgCard, borderRadius: 8, border: `1px solid ${co.border}`, overflow: 'hidden' }}>
+              <button onClick={() => setResumoAberto(v => !v)}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: 'none', border: 'none', cursor: 'pointer', color: co.textDim }}>
+                <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.06em' }}>RESUMO DA QUALIFICAÇÃO</span>
+                <span style={{ fontSize: 12, transition: 'transform 0.2s', display: 'inline-block', transform: resumoAberto ? 'rotate(180deg)' : 'rotate(0deg)' }}>▾</span>
+              </button>
+              {resumoAberto && (
+                <div style={{ padding: '0 12px 12px' }}>
+                  <p style={{ color: co.text, fontSize: 12, lineHeight: 1.6, margin: 0, whiteSpace: 'pre-wrap' }}>{lead.resumo}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Label secção chat */}
+        <div style={{ padding: '7px 16px', borderBottom: `1px solid ${co.border}`, flexShrink: 0 }}>
+          <span style={{ color: co.textDim, fontSize: 10, fontWeight: 600, letterSpacing: '0.06em' }}>CONVERSA WHATSAPP</span>
+        </div>
+
+        {/* Mensagens */}
+        <div style={{ height: 500, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10, background: co.bg }}>
+          {messages.map((msg) => {
+            const type = msg.type || 'human'
+            const content = msg.content || ''
+            const mediaUrl = msg.mediaUrl || null
+            const mediaType = msg.mediaType || null
+            const isRight = type === 'ai' || type === 'agent'
+            const bubbleBg = type === 'agent' ? co.success : type === 'ai' ? co.primary : co.bgCard
+            const bubbleColor = isRight ? '#fff' : co.text
+            const bubbleRadius = isRight ? '16px 16px 4px 16px' : '16px 16px 16px 4px'
+            return (
+              <div key={msg.id} style={{ display: 'flex', justifyContent: isRight ? 'flex-end' : 'flex-start' }}>
+                <div style={{ maxWidth: '72%', padding: '10px 14px', borderRadius: bubbleRadius, background: bubbleBg, border: isRight ? 'none' : `1px solid ${co.border}`, color: bubbleColor, fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                  {(mediaType === 'ptt' || mediaType === 'audio') ? (
+                    <PttPlayer
+                      messageId={msg.messageId}
+                      agenteId={agenteId}
+                      content={content}
+                      hostedUrl={mediaUrl?.startsWith('https://') && !mediaUrl.includes('mmg.whatsapp.net') ? mediaUrl : null}
+                      isRight={isRight}
+                      phoneNumber={telefone}
+                    />
+                  ) : mediaUrl && mediaType === 'image' ? (
+                    <>
+                      <img
+                        src={mediaUrl}
+                        alt="imagem"
+                        style={{ maxWidth: 220, maxHeight: 220, borderRadius: 8, display: 'block', cursor: 'pointer' }}
+                        onClick={() => setLightboxUrl(mediaUrl)}
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none'
+                          const next = e.currentTarget.nextElementSibling
+                          if (next) next.style.display = 'flex'
+                        }}
+                      />
+                      <a href={mediaUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline', display: 'none', alignItems: 'center', gap: 6 }}>
+                        <span>🖼️</span><span>Ver imagem</span>
+                      </a>
+                    </>
+                  ) : mediaUrl ? (
+                    <a href={mediaUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span>📎</span><span>{content || 'Arquivo'}</span>
+                    </a>
+                  ) : content}
+                </div>
+              </div>
+            )
+          })}
+          {messages.length === 0 && (
+            <div style={{ textAlign: 'center', color: co.textMuted, fontSize: 13, marginTop: 40, lineHeight: 1.8 }}>
+              Nenhuma mensagem ainda.
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Input bar */}
+        <input ref={fileInputRef} type="file" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.zip" style={{ display: 'none' }}
+          onChange={e => { if (e.target.files[0]) { sendMedia(e.target.files[0]); e.target.value = '' } }} />
+        <div style={{ padding: '12px 16px', borderTop: `1px solid ${co.border}`, display: 'flex', gap: 8, alignItems: 'center', background: co.bgCard, flexShrink: 0 }}>
+          <button onClick={() => fileInputRef.current?.click()} title="Enviar arquivo" disabled={sending || recording}
+            style={{ width: 36, height: 36, borderRadius: 8, background: co.bgInput, border: `1px solid ${co.border}`, color: co.textMuted, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, opacity: (sending || recording) ? 0.4 : 1 }}>
+            📎
+          </button>
+          <input
+            value={recording ? '' : inputText}
+            onChange={e => setInputText(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendText() } }}
+            placeholder={recording ? '● Gravando...' : 'Digite uma mensagem...'}
+            disabled={sending || recording}
+            style={{ flex: 1, padding: '9px 14px', background: co.bgInput, border: `1px solid ${recording ? co.danger : co.border}`, borderRadius: 24, color: recording ? co.danger : co.text, fontSize: 13, outline: 'none', fontFamily: 'inherit', cursor: recording ? 'default' : 'text' }}
+          />
+          <button onMouseDown={startRecording} onMouseUp={stopRecording} onTouchStart={startRecording} onTouchEnd={stopRecording}
+            title="Segurar para gravar áudio" disabled={sending}
+            style={{ width: 36, height: 36, borderRadius: '50%', background: recording ? co.dangerBg : co.bgInput, border: `1px solid ${recording ? co.danger : co.border}`, color: recording ? co.danger : co.textMuted, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.15s', opacity: sending ? 0.4 : 1 }}>
+            🎤
+          </button>
+          <button onClick={sendText} disabled={sending || recording || !inputText.trim()}
+            style={{ width: 36, height: 36, borderRadius: '50%', background: co.primary, border: 'none', color: '#fff', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, opacity: (sending || recording || !inputText.trim()) ? 0.4 : 1, transition: 'opacity 0.15s' }}>
+            {sending ? '⋯' : '→'}
+          </button>
+        </div>
+      </div>
+
+      {/* LIGHTBOX */}
+      {lightboxUrl && (
+        <div onClick={() => setLightboxUrl(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'zoom-out' }}>
+          <img src={lightboxUrl} alt="imagem ampliada" style={{ maxWidth: '90vw', maxHeight: '90vh', borderRadius: 12, boxShadow: '0 8px 40px rgba(0,0,0,0.6)', objectFit: 'contain' }} onClick={e => e.stopPropagation()} />
+          <button onClick={() => setLightboxUrl(null)} style={{ position: 'absolute', top: 20, right: 24, background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', fontSize: 22, width: 40, height: 40, borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+        </div>
+      )}
+    </>
+  )
+}
+
+// ============================================================
 // CHAT (Cliente)
 // ============================================================
 function ChatView({ clienteId }) {
@@ -915,6 +1414,7 @@ function ChatView({ clienteId }) {
   const [messages, setMessages] = useState([])
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [inputText, setInputText] = useState('')
   const [sending, setSending] = useState(false)
   const [recording, setRecording] = useState(false)
@@ -923,6 +1423,12 @@ function ChatView({ clienteId }) {
   const fileInputRef = useRef(null)
   const mediaRecorderRef = useRef(null)
   const audioChunksRef = useRef([])
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') setLightboxUrl(null) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   // Refs persistem entre re-renders sem causar re-renders desnecessários
   const leadsRef = useRef([])
@@ -1122,7 +1628,12 @@ function ChatView({ clienteId }) {
       {/* LISTA DE CONVERSAS */}
       <div style={{ width: 300, borderRight: `1px solid ${co.border}`, display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
         <div style={{ padding: '20px 16px 12px', borderBottom: `1px solid ${co.border}` }}>
-          <h2 style={{ color: co.text, fontSize: 16, fontWeight: 700, margin: '0 0 12px' }}>Chat</h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <h2 style={{ color: co.text, fontSize: 16, fontWeight: 700, margin: 0 }}>Chat</h2>
+            <button onClick={async () => { setRefreshing(true); if (selectedSession) setMessages([]); await refreshConversas(); setRefreshing(false) }} disabled={refreshing} title="Atualizar" style={{ width: 30, height: 30, borderRadius: 8, background: refreshing ? co.primaryBg : co.bgCard, border: `1px solid ${refreshing ? co.primary : co.border}`, color: refreshing ? co.primary : co.textMuted, fontSize: 15, cursor: refreshing ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}>
+              <span className={refreshing ? 'spinning' : ''}>↻</span>
+            </button>
+          </div>
           <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Buscar conversas..."
             style={{ width: '100%', padding: '8px 12px', background: co.bgInput, border: `1px solid ${co.border}`, borderRadius: 8, color: co.text, fontSize: 12, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }} />
         </div>
@@ -1297,6 +1808,7 @@ function AdminClientesView({ onSelectCliente }) {
   const [clientes, setClientes] = useState([])
   const [filtro, setFiltro] = useState('todos')
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [showNovoCliente, setShowNovoCliente] = useState(false)
   const [novoForm, setNovoForm] = useState({ nome: '', nome_cliente: '', email: '', senha: '' })
   const [criando, setCriando] = useState(false)
@@ -1304,6 +1816,16 @@ function AdminClientesView({ onSelectCliente }) {
   const [editingCliente, setEditingCliente] = useState(null)
   const [savingCliente, setSavingCliente] = useState(false)
   const [erroEdit, setErroEdit] = useState('')
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return
+      if (editingCliente) { setEditingCliente(null); return }
+      if (showNovoCliente) { setShowNovoCliente(false); return }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [editingCliente, showNovoCliente])
 
   const fetchClientes = async () => {
     const { data } = await supabase.from('clientes').select('*, agentes(id, nome, ativo, ia_ativa)')
@@ -1361,7 +1883,12 @@ function AdminClientesView({ onSelectCliente }) {
     <div style={{ padding: 28, overflowY: "auto", height: "100vh", boxSizing: "border-box" }}>
       <div style={{ marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div><h2 style={{ color: co.text, fontSize: 20, fontWeight: 700, margin: 0 }}>Clientes</h2><p style={{ color: co.textMuted, fontSize: 13, margin: "4px 0 0" }}>{clientes.filter(c => { const at = (c.agentes||[]).some(a=>a.ativo); return filtro==='todos'||(filtro==='ativo'?at:!at) }).length} cliente(s)</p></div>
-        <Btn size="md" onClick={() => setShowNovoCliente(true)}>+ Novo Cliente</Btn>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <button onClick={async () => { setRefreshing(true); await fetchClientes(); setRefreshing(false) }} disabled={refreshing} title="Atualizar" style={{ width: 36, height: 36, borderRadius: 8, background: refreshing ? co.primaryBg : co.bgCard, border: `1px solid ${refreshing ? co.primary : co.border}`, color: refreshing ? co.primary : co.textMuted, fontSize: 16, cursor: refreshing ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}>
+            <span className={refreshing ? "spinning" : ""}>↻</span>
+          </button>
+          <Btn size="md" onClick={() => setShowNovoCliente(true)}>+ Novo Cliente</Btn>
+        </div>
       </div>
       <div style={{ display: "flex", gap: 6, marginBottom: 20 }}>
         {['todos', 'ativo', 'desativado'].map(f => (
@@ -1453,6 +1980,12 @@ function AdminEditorView({ cliente: initialCliente }) {
   const [showNovaIA, setShowNovaIA] = useState(false)
   const [novaIANome, setNovaIANome] = useState("")
   const [criandoIA, setCriandoIA] = useState(false)
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') setShowNovaIA(false) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   const fetchAgentes = async () => {
     const { data } = await supabase.from('agentes').select('*').eq('cliente_id', initialCliente.id).order('created_at')
