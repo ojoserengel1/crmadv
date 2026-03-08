@@ -10,7 +10,7 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
       "position": [
-        -2880,
+        -3136,
         -1360
       ],
       "id": "4273dbe7-c196-4583-8905-16ac611f0ddf",
@@ -24,7 +24,7 @@
             {
               "id": "9f40523e-a2c8-43af-86e1-f8829550d374",
               "name": "telefone",
-              "value": "={{ $json.body.data.from }}",
+              "value": "={{ $('Webhook').item.json.body.message.sender_pn }}",
               "type": "string"
             }
           ]
@@ -34,7 +34,7 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -2464,
+        -2720,
         -1360
       ],
       "id": "b9e28e55-c574-429e-b526-701b9a6391ca",
@@ -53,7 +53,7 @@
             {
               "id": "81459376-48d9-4507-978d-23b1dd6cd74c",
               "name": "=nome",
-              "value": "={{ $('Webhook').item.json.body.data.pushName }}",
+              "value": "={{ $('Webhook').item.json.body.message.senderName }}",
               "type": "string"
             },
             {
@@ -65,25 +65,25 @@
             {
               "id": "b45d250b-35cf-44c2-9db7-01acb6809188",
               "name": "mensagem",
-              "value": "={{ $('Webhook').item.json.body.data.body }} ",
+              "value": "={{ $('Webhook').item.json.body.message.text }}",
               "type": "string"
             },
             {
               "id": "c0596df2-da8a-4942-84ad-b66bf1fb4fdd",
               "name": "id",
-              "value": "={{ $('Webhook').item.json.body.data.messageId }}",
+              "value": "={{ $('Webhook').item.json.body.message.messageid }}",
               "type": "string"
             },
             {
               "id": "71bb532d-029a-48f4-afae-b6e597fe5a74",
               "name": "data_url",
-              "value": "={{ $('Webhook').item.json.body.data.mediaUrl }}",
+              "value": "={{ $('Webhook').item.json.body.message.mediaUrl }}",
               "type": "string"
             },
             {
               "id": "0df6015c-6763-468a-8b71-cfc72283444f",
               "name": "messageType",
-              "value": "={{ $('Webhook').item.json.body.data.type }}   ",
+              "value": "={{ $('Webhook').item.json.body.message.type }}",
               "type": "string"
             },
             {
@@ -95,25 +95,25 @@
             {
               "id": "13b40899-5a38-497e-85f0-9cb5f40dbac6",
               "name": "instancia_wpp",
-              "value": "={{ $('BUSCAR CLIENTE').item.json.instancia_wpp }}  ",
+              "value": "={{ $('BUSCAR CLIENTE').item.json.instancia_wpp }}",
               "type": "string"
             },
             {
               "id": "c1344156-c4f5-48f8-a799-dba04c5d2cb4",
               "name": "=url_planilha",
-              "value": "={{ $('BUSCAR CLIENTE').item.json.url_planilha }}  ",
+              "value": "={{ $('BUSCAR CLIENTE').item.json.url_planilha }}",
               "type": "string"
             },
             {
               "id": "74ef7236-79e9-4cd2-96fa-59caf0360ffc",
               "name": "url_audio",
-              "value": "={{ $('BUSCAR CLIENTE').item.json.url_audio }} ",
+              "value": "={{ $('BUSCAR CLIENTE').item.json.url_audio }}",
               "type": "string"
             },
             {
               "id": "1232d60c-3e23-49b4-b18d-da6df3e06985",
               "name": "frase_gatilho",
-              "value": "={{ $('BUSCAR CLIENTE').item.json.frase_gatilho }} ",
+              "value": "={{ $('BUSCAR CLIENTE').item.json.frase_gatilho }}",
               "type": "string"
             },
             {
@@ -131,7 +131,7 @@
             {
               "id": "6091415b-fb1b-4920-acc0-f34982c575ce",
               "name": "agente_id",
-              "value": "={{ $('BUSCAR CLIENTE').item.json.id }}  ",
+              "value": "={{ $('BUSCAR CLIENTE').item.json.id }} ",
               "type": "string"
             },
             {
@@ -147,7 +147,7 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -1504,
+        -1760,
         -1360
       ],
       "id": "ac45f340-553d-432c-b3ff-860ceaaeb2b4",
@@ -551,7 +551,7 @@
           "conditions": [
             {
               "id": "e7e8838d-de46-4cbd-8fd5-b1d1905cefa9",
-              "leftValue": "={{ $json.body.data.isFromMe }}",
+              "leftValue": "={{ $json.body.message.fromMe }}",
               "rightValue": "",
               "operator": {
                 "type": "boolean",
@@ -567,7 +567,7 @@
       "type": "n8n-nodes-base.filter",
       "typeVersion": 2.2,
       "position": [
-        -2672,
+        -2928,
         -1360
       ],
       "id": "b4120c45-5aff-4efb-adc6-8231e88af332",
@@ -862,12 +862,12 @@
     },
     {
       "parameters": {
-        "jsCode": "function normalizarTelefone(input) {\n  if (!input) return null;\n  let numero = String(input).replace(/\\D/g, '');\n  if (numero.startsWith('5555')) {\n    numero = numero.replace(/^555+/, '55');\n  }\n  if (numero.startsWith('55')) {\n    numero = numero.slice(2);\n  }\n  if (numero.length < 10 || numero.length > 11) {\n    return null;\n  }\n  const ddd = numero.slice(0, 2);\n  let telefone = numero.slice(2);\n  if (telefone.length === 8) {\n    telefone = '9' + telefone;\n  }\n  if (!telefone.startsWith('9')) {\n    telefone = '9' + telefone.slice(1);\n  }\n  const telefoneFinal = `55${ddd}${telefone}`;\n  if (telefoneFinal.length !== 13) {\n    return null;\n  }\n  return telefoneFinal;\n}\n\nfunction formatarData(input) {\n  if (!input) return null;\n  const data = new Date(input);\n  const dia = String(data.getDate()).padStart(2, '0');\n  const mes = String(data.getMonth() + 1).padStart(2, '0');\n  const ano = data.getFullYear();\n  return `${dia}/${mes}/${ano}`;\n}\n\nconst telefone = $input.first().json.telefone;\n  const ts = $input.first().json.body?.data?.timestamp;\n  const dateTime = ts ? new Date(ts * 1000).toISOString() : new Date().toISOString();\n\nreturn {\n  telefone_normalizado: normalizarTelefone(telefone),\n  data_formatada: formatarData(dateTime)\n};"
+        "jsCode": "function normalizarTelefone(input) {\n  if (!input) return null;\n  let numero = String(input).replace(/\\D/g, '');\n  if (numero.startsWith('5555')) {\n    numero = numero.replace(/^555+/, '55');\n  }\n  if (numero.startsWith('55')) {\n    numero = numero.slice(2);\n  }\n  if (numero.length < 10 || numero.length > 11) {\n    return null;\n  }\n  const ddd = numero.slice(0, 2);\n  let telefone = numero.slice(2);\n  if (telefone.length === 8) {\n    telefone = '9' + telefone;\n  }\n  if (!telefone.startsWith('9')) {\n    telefone = '9' + telefone.slice(1);\n  }\n  const telefoneFinal = `55${ddd}${telefone}`;\n  if (telefoneFinal.length !== 13) {\n    return null;\n  }\n  return telefoneFinal;\n}\n\nfunction formatarData(input) {\n  if (!input) return null;\n  const data = new Date(input);\n  const dia = String(data.getDate()).padStart(2, '0');\n  const mes = String(data.getMonth() + 1).padStart(2, '0');\n  const ano = data.getFullYear();\n  return `${dia}/${mes}/${ano}`;\n}\n\nconst telefone = $('Webhook').item.json.body.message.sender_pn;\nconst ts = $input.first().json.body?.message?.messageTimestamp;\nconst dateTime = ts ? new Date(ts).toISOString() : new Date().toISOString();\n\nreturn {\n  telefone_normalizado: normalizarTelefone(telefone),\n  data_formatada: formatarData(dateTime)\n};"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -2240,
+        -2496,
         -1360
       ],
       "id": "82bc7151-ff38-4b21-a882-3e6e0c73c23c",
@@ -1140,13 +1140,13 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "  SELECT a.*,                                                                                                                                                                                                        \n    c.nome_cliente,                                         \n    (SELECT json_agg(p ORDER BY p.ordem)\n     FROM perguntas_qualificacao p\n     WHERE p.agente_id = a.id AND p.ativa = true) as perguntas,\n    (SELECT STRING_AGG('Pergunta ' || p.ordem || ':' || E'\\n' || p.pergunta, E'\\n\\n' ORDER BY p.ordem)\n     FROM perguntas_qualificacao p\n     WHERE p.agente_id = a.id AND p.ativa = true) as perguntas_texto,\n    (SELECT COUNT(*)::int\n     FROM perguntas_qualificacao p\n     WHERE p.agente_id = a.id AND p.ativa = true) as num_perguntas\n  FROM agentes a\n  JOIN clientes c ON c.id = a.cliente_id\nWHERE a.instancia_wpp = '{{ $('Webhook').item.json.body.instanceId }}'  LIMIT 1",
+        "query": "  SELECT a.*,                                                                                                                                                                                                        \n    c.nome_cliente,                                         \n    (SELECT json_agg(p ORDER BY p.ordem)\n     FROM perguntas_qualificacao p\n     WHERE p.agente_id = a.id AND p.ativa = true) as perguntas,\n    (SELECT STRING_AGG('Pergunta ' || p.ordem || ':' || E'\\n' || p.pergunta, E'\\n\\n' ORDER BY p.ordem)\n     FROM perguntas_qualificacao p\n     WHERE p.agente_id = a.id AND p.ativa = true) as perguntas_texto,\n    (SELECT COUNT(*)::int\n     FROM perguntas_qualificacao p\n     WHERE p.agente_id = a.id AND p.ativa = true) as num_perguntas\n  FROM agentes a\n  JOIN clientes c ON c.id = a.cliente_id\nWHERE a.instancia_wpp = '{{ $('Webhook').item.json.body.instanceName }}'  LIMIT 1",
         "options": {}
       },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        -2016,
+        -2272,
         -1360
       ],
       "id": "2d2b6838-b71d-45f0-b633-1a5fb25a3ec3",
@@ -1186,7 +1186,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1728,
+        -1984,
         -1360
       ],
       "id": "269feb20-17eb-4dfa-81c0-960c83b8e348",
@@ -1200,8 +1200,8 @@
       },
       "type": "n8n-nodes-base.stickyNote",
       "position": [
-        3296,
-        -1600
+        3264,
+        -1616
       ],
       "typeVersion": 1,
       "id": "0faa41a1-d9e7-449e-a4da-d1be7a775b83",
@@ -1210,7 +1210,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://grupoadv.uazapi.com/send/text ",
+        "url": "https://grupoadv.uazapi.com/send/text",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -1222,13 +1222,13 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={ \"phone\": \"{{ $('DADOS LEAD').item.json.telefone }}\", \"message\": \"{{ $json.mensagens }}\" }",
+        "jsonBody": "={{ JSON.stringify({number: $('DADOS LEAD').item.json.telefone, text: $json.mensagens}) }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        4992,
+        5008,
         -1296
       ],
       "id": "2ebd72c6-fd0b-4d77-9e87-a126a6424b27",
@@ -1237,7 +1237,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://grupoadv.uazapi.com/send/audio  ",
+        "url": "https://grupoadv.uazapi.com/send/media",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -1249,14 +1249,14 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={ \"phone\": \"{{ $('DADOS LEAD').item.json.telefone }}\", \"url\": \"{{ $('DADOS LEAD').item.json.url_audio }}\" }",
+        "jsonBody": "={{ JSON.stringify({number: $('DADOS LEAD').item.json.telefone, file: $('DADOS LEAD').item.json.url_audio, type: \"ptt\"}) }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        3360,
-        -1552
+        3328,
+        -1568
       ],
       "id": "90a26c09-96a7-45d0-9ccc-74220b9070c4",
       "name": "ÁUDIO BOAS VINDAS"
@@ -1300,6 +1300,27 @@
       ],
       "id": "1c09b20e-dd99-4a4b-b2a1-b251556eee45",
       "name": "TRANSFORMA URL EM BASE2"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "  INSERT INTO chat_memory (session_id, message)\n  VALUES (\n    '{{ $(\"DADOS LEAD\").item.json.telefone }}',\n    json_build_object(\n      'type', 'human',\n      'content', '{{ $(\"DADOS LEAD\").item.json.mensagem }}'\n    )::jsonb\n  )",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -1520,
+        -1360
+      ],
+      "id": "96b59f7a-891d-4bad-95c3-3d43d8426b97",
+      "name": "Chat WhatsApp",
+      "credentials": {
+        "postgres": {
+          "id": "toWNygO6lUq2z27A",
+          "name": "Postgres José"
+        }
+      }
     }
   ],
   "pinData": {
@@ -1308,126 +1329,126 @@
         "json": {
           "headers": {
             "host": "n8n.plusstech.com.br",
-            "user-agent": "axios/1.13.2",
-            "content-length": "1462",
-            "accept": "application/json, text/plain, */*",
-            "accept-encoding": "gzip, compress, deflate, br",
+            "user-agent": "uazapiGO-Webhook/1.0",
+            "content-length": "2482",
+            "accept-encoding": "gzip",
             "content-type": "application/json",
-            "x-forwarded-for": "172.18.0.1",
+            "x-forwarded-for": "49.12.82.97",
             "x-forwarded-host": "n8n.plusstech.com.br",
             "x-forwarded-port": "443",
             "x-forwarded-proto": "https",
             "x-forwarded-server": "a3e765f23d1e",
-            "x-real-ip": "172.18.0.1"
+            "x-real-ip": "49.12.82.97"
           },
           "params": {},
           "query": {},
           "body": {
-            "event": "messages.upsert",
-            "instance": "[José] Automações Internas",
-            "data": {
-              "key": {
-                "remoteJid": "554797094291@s.whatsapp.net",
-                "remoteJidAlt": "554797094291@s.whatsapp.net",
-                "fromMe": false,
-                "id": "3B08BEC44BE296098BA3",
-                "participant": "",
-                "addressingMode": "lid"
-              },
-              "pushName": "José Rengel",
-              "status": "DELIVERY_ACK",
-              "message": {
-                "conversation": "bom dia",
-                "messageContextInfo": {
-                  "threadId": [],
-                  "deviceListMetadata": {
-                    "senderKeyIndexes": [],
-                    "recipientKeyIndexes": [],
-                    "senderKeyHash": {
-                      "0": 228,
-                      "1": 134,
-                      "2": 36,
-                      "3": 204,
-                      "4": 142,
-                      "5": 128,
-                      "6": 75,
-                      "7": 222,
-                      "8": 182,
-                      "9": 92
-                    },
-                    "senderTimestamp": {
-                      "low": 1770641799,
-                      "high": 0,
-                      "unsigned": true
-                    },
-                    "recipientKeyHash": {
-                      "0": 22,
-                      "1": 71,
-                      "2": 126,
-                      "3": 232,
-                      "4": 50,
-                      "5": 57,
-                      "6": 4,
-                      "7": 33,
-                      "8": 168,
-                      "9": 42
-                    },
-                    "recipientTimestamp": {
-                      "low": 1771340588,
-                      "high": 0,
-                      "unsigned": true
-                    }
-                  },
-                  "deviceListMetadataVersion": 2,
-                  "messageSecret": {
-                    "0": 226,
-                    "1": 142,
-                    "2": 152,
-                    "3": 230,
-                    "4": 116,
-                    "5": 11,
-                    "6": 138,
-                    "7": 99,
-                    "8": 34,
-                    "9": 171,
-                    "10": 20,
-                    "11": 97,
-                    "12": 61,
-                    "13": 175,
-                    "14": 145,
-                    "15": 119,
-                    "16": 98,
-                    "17": 2,
-                    "18": 65,
-                    "19": 12,
-                    "20": 176,
-                    "21": 69,
-                    "22": 49,
-                    "23": 122,
-                    "24": 105,
-                    "25": 12,
-                    "26": 23,
-                    "27": 238,
-                    "28": 157,
-                    "29": 4,
-                    "30": 55,
-                    "31": 97
-                  }
-                }
-              },
-              "messageType": "conversation",
-              "messageTimestamp": 1772190569,
-              "instanceId": "a1b1fa05-ff65-4b26-9b73-ce6efd4881d7",
-              "source": "unknown"
+            "BaseUrl": "https://grupoadv.uazapi.com",
+            "EventType": "messages",
+            "chat": {
+              "chatbot_agentResetMemoryAt": 0,
+              "chatbot_disableUntil": 0,
+              "chatbot_lastTriggerAt": 0,
+              "chatbot_lastTrigger_id": "",
+              "id": "rad625114f19642",
+              "image": "",
+              "imagePreview": "https://pps.whatsapp.net/v/t61.24694-24/567246082_1193575235812559_3465564935490350171_n.jpg?stp=dst-jpg_s96x96_tt6&ccb=11-4&oh=01_Q5Aa3wFx2FFjhhpPPc40KkyN5plA9EX4-ZP9DGwmG3wfZuHpbg&oe=69B80EA0&_nc_sid=5e03e0&_nc_cat=106",
+              "lead_assignedAttendant_id": "",
+              "lead_email": "",
+              "lead_field01": "",
+              "lead_field02": "",
+              "lead_field03": "",
+              "lead_field04": "",
+              "lead_field05": "",
+              "lead_field06": "",
+              "lead_field07": "",
+              "lead_field08": "",
+              "lead_field09": "",
+              "lead_field10": "",
+              "lead_field11": "",
+              "lead_field12": "",
+              "lead_field13": "",
+              "lead_field14": "",
+              "lead_field15": "",
+              "lead_field16": "",
+              "lead_field17": "",
+              "lead_field18": "",
+              "lead_field19": "",
+              "lead_field20": "",
+              "lead_fullName": "",
+              "lead_isTicketOpen": false,
+              "lead_kanbanOrder": 0,
+              "lead_name": "",
+              "lead_notes": "",
+              "lead_personalid": "",
+              "lead_status": "",
+              "lead_tags": [],
+              "name": "José Rengel",
+              "owner": "554796585871",
+              "phone": "+55 47 9709-4291",
+              "wa_archived": false,
+              "wa_chatid": "554797094291@s.whatsapp.net",
+              "wa_chatlid": "252608618987703@lid",
+              "wa_contactName": "",
+              "wa_ephemeralExpiration": 0,
+              "wa_fastid": "554796585871:554797094291",
+              "wa_isBlocked": false,
+              "wa_isGroup": false,
+              "wa_isGroup_admin": false,
+              "wa_isGroup_announce": false,
+              "wa_isGroup_community": false,
+              "wa_isGroup_member": false,
+              "wa_isPinned": false,
+              "wa_label": [],
+              "wa_lastMessageSender": "252608618987703@lid",
+              "wa_lastMessageTextVote": "ola",
+              "wa_lastMessageType": "Conversation",
+              "wa_lastMsgTimestamp": 1772815437000,
+              "wa_muteEndTime": 0,
+              "wa_name": "José Rengel",
+              "wa_unreadCount": 11
             },
-            "destination": "https://n8n.plusstech.com.br/webhook-test/receber-mensagem-whats",
-            "date_time": "2026-02-27T08:09:29.440Z",
-            "sender": "554796585871@s.whatsapp.net",
-            "server_url": "https://evolutionapi.plusstech.com.br",
-            "apikey": "8F7838ADB94D-4AD4-8EE2-6A6329AA6DE8"
+            "chatSource": "updated",
+            "instanceName": "ia-trabalhista-90f1b8",
+            "message": {
+              "buttonOrListid": "",
+              "chatid": "554797094291@s.whatsapp.net",
+              "chatlid": "252608618987703@lid",
+              "content": "ola",
+              "convertOptions": "",
+              "edited": "",
+              "fromMe": false,
+              "groupName": "Unknown",
+              "id": "554796585871:3B6031B9ACA1140DF294",
+              "isGroup": false,
+              "mediaType": "",
+              "messageTimestamp": 1772815437000,
+              "messageType": "Conversation",
+              "messageid": "3B6031B9ACA1140DF294",
+              "owner": "554796585871",
+              "quoted": "",
+              "reaction": "",
+              "sender": "252608618987703@lid",
+              "senderName": "José Rengel",
+              "sender_lid": "252608618987703@lid",
+              "sender_pn": "554797094291@s.whatsapp.net",
+              "source": "unknown",
+              "status": "",
+              "text": "ola",
+              "track_id": "",
+              "track_source": "",
+              "type": "text",
+              "vote": "",
+              "wasSentByApi": false
+            },
+            "owner": "554796585871",
+            "token": "5c869095-cb06-4217-9853-278fc2d6b8be"
           },
-          "webhookUrl": "https://n8n.plusstech.com.br/webhook-test/receber-mensagem-whats",
+          "webhookUrl": "https://n8n.plusstech.com.br/webhook-test/44d32ad6-0b39-4ac4-9427-0cb78648fa46",
           "executionMode": "test"
+        },
+        "pairedItem": {
+          "item": 0
         }
       }
     ]
@@ -1459,7 +1480,7 @@
       "main": [
         [
           {
-            "node": "Tem Conversa em Aberto?",
+            "node": "Chat WhatsApp",
             "type": "main",
             "index": 0
           }
@@ -2008,6 +2029,17 @@
           }
         ]
       ]
+    },
+    "Chat WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Tem Conversa em Aberto?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
@@ -2020,7 +2052,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "4dbc1219-05b9-456d-8a80-722c63fbd4fe",
+  "versionId": "02866875-68ca-4664-96ab-2e15ff611b78",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "804c00b1e5188d906bae124422d170cfebea2fae250a07ce077882d6fad45087"

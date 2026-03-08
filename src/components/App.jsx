@@ -9,14 +9,14 @@ const supabase = createClient()
 // THEME
 // ============================================================
 const co = {
-  bg: "#0A0A0F", bgCard: "#12121A", bgHover: "#1A1A25", bgInput: "#16161F",
-  border: "#2A2A35", borderFocus: "#6366F1",
+  bg: "#0C0C0C", bgCard: "#161616", bgHover: "#1E1E1E", bgInput: "#131313",
+  border: "#2A2A2A", borderFocus: "#EE5221",
   text: "#E8E8ED", textMuted: "#8888A0", textDim: "#55556A",
-  primary: "#6366F1", primaryHover: "#5558E6", primaryBg: "rgba(99,102,241,0.1)",
+  primary: "#EE5221", primaryHover: "#D4481E", primaryBg: "rgba(238,82,33,0.1)",
   success: "#10B981", successBg: "rgba(16,185,129,0.1)",
   warning: "#F59E0B", warningBg: "rgba(245,158,11,0.1)",
   danger: "#EF4444", dangerBg: "rgba(239,68,68,0.1)",
-  purple: "#8B5CF6", purpleBg: "rgba(139,92,246,0.1)",
+  purple: "#EE5221", purpleBg: "rgba(238,82,33,0.1)",
 }
 
 // ============================================================
@@ -111,15 +111,13 @@ function LoginPage({ onLogin }) {
   }
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: `linear-gradient(135deg, ${co.bg} 0%, #0D0D1A 50%, #10101F 100%)`, fontFamily: "'Inter', -apple-system, sans-serif" }}>
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: co.bg, fontFamily: "'Inter', -apple-system, sans-serif" }}>
       <div style={{ width: 400, padding: 40, background: co.bgCard, borderRadius: 16, border: `1px solid ${co.border}`, boxShadow: "0 25px 50px rgba(0,0,0,0.5)" }}>
         <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <div style={{ width: 48, height: 48, borderRadius: 12, background: `linear-gradient(135deg, ${co.primary}, ${co.purple})`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", fontSize: 20, fontWeight: 800, color: "#fff" }}>IA</div>
-          <h1 style={{ color: co.text, fontSize: 22, fontWeight: 700, margin: 0 }}>Agente de Qualificação</h1>
-          <p style={{ color: co.textMuted, fontSize: 13, marginTop: 6 }}>Acesse sua conta</p>
+          <img src="/logo.png" alt="Grupo ADV" style={{ width: 250, margin: "0 auto 24px", display: "block", objectFit: "contain" }} />
         </div>
-        <Input label="EMAIL" value={email} onChange={setEmail} placeholder="seu@email.com" />
-        <Input label="SENHA" value={senha} onChange={setSenha} type="password" placeholder="••••••••" />
+        <Input label="Endereço de e-mail" value={email} onChange={setEmail} placeholder="seu@email.com" />
+        <Input label="Senha" value={senha} onChange={setSenha} type="password" placeholder="••••••••" />
         {error && <p style={{ color: co.danger, fontSize: 13, margin: "0 0 16px", padding: "8px 12px", background: co.dangerBg, borderRadius: 8 }}>{error}</p>}
         <Btn onClick={go} disabled={loading} size="lg" style={{ width: "100%", marginTop: 4 }}>{loading ? "Entrando..." : "Entrar"}</Btn>
       </div>
@@ -148,9 +146,11 @@ function Sidebar({ user, activeTab, onTabChange, onLogout }) {
 
       {/* LOGO + TOGGLE */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: collapsed ? "center" : "space-between", marginBottom: 32, minHeight: 36 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: collapsed ? 0 : 10, overflow: "hidden" }}>
-          <div style={{ width: 32, height: 32, borderRadius: 8, background: `linear-gradient(135deg, ${co.primary}, ${co.purple})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, color: "#fff", flexShrink: 0 }}>IA</div>
-          {!collapsed && <div style={{ overflow: "hidden" }}><div style={{ color: co.text, fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}>Qualificação</div><div style={{ color: co.textDim, fontSize: 10, fontWeight: 500 }}>{isAdmin ? "ADMIN" : "CLIENTE"}</div></div>}
+        <div style={{ display: "flex", alignItems: "center", overflow: "hidden" }}>
+          {collapsed
+            ? <img src="/logo-icon.png" alt="ADV" style={{ width: 36, height: 36, objectFit: "contain", display: "block" }} />
+            : <img src="/logo.png" alt="Grupo ADV" style={{ width: 150, objectFit: "contain", display: "block" }} />
+          }
         </div>
         {!collapsed && (
           <button onClick={() => setCollapsed(true)} title="Recolher menu"
