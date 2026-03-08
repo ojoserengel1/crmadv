@@ -1,7 +1,7 @@
 import './globals.css'
 
 export const metadata = {
-  title: 'CRM Grupo ADV',
+  title: 'Grupo ADV',
   description: 'CRM + IA de Qualificação para Advogados',
   icons: {
     icon: '/favicon.png',
