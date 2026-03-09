@@ -1206,6 +1206,7 @@ function LeadDrawer({ lead, onClose, onEdit, onDelete }) {
   const [resumoAberto, setResumoAberto] = useState(false)
   const [sending, setSending] = useState(false)
   const [recording, setRecording] = useState(false)
+  const [recordingSeconds, setRecordingSeconds] = useState(0)
   const [lightboxUrl, setLightboxUrl] = useState(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -1236,8 +1237,11 @@ function LeadDrawer({ lead, onClose, onEdit, onDelete }) {
   }, [lightboxUrl, onClose])
   const messagesEndRef = useRef(null)
   const fileInputRef = useRef(null)
+  const imageInputRef = useRef(null)
   const mediaRecorderRef = useRef(null)
   const audioChunksRef = useRef([])
+  const recordingTimerRef = useRef(null)
+  const recordingSecondsRef = useRef(0)
 
   const agenteId = lead?.agente_id || null
   const telefone = lead?.telefone || null
@@ -1274,18 +1278,24 @@ function LeadDrawer({ lead, onClose, onEdit, onDelete }) {
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
 
-  const sendMessage = async (tipo, conteudo) => {
+  const sendMessage = async (tipo, conteudo, duration = null) => {
     if (!agenteId || !telefone || !conteudo) return
     const tempId = `temp_${Date.now()}`
-    setMessages(prev => [...prev, { id: tempId, type: 'agent', content: conteudo, mediaUrl: tipo !== 'text' ? conteudo : null, mediaType: tipo !== 'text' ? tipo : null }])
+    const displayContent = tipo === 'text' ? conteudo
+      : tipo === 'ptt' && duration ? `[ptt:${duration}s] ${conteudo}`
+      : `[${tipo}] ${conteudo}`
+    setMessages(prev => [...prev, { id: tempId, type: 'agent', content: displayContent, mediaUrl: tipo !== 'text' ? conteudo : null, mediaType: tipo !== 'text' ? tipo : null }])
     setSending(true)
     try {
       const res = await fetch('/api/chat/enviar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ agenteId, telefone, tipo, conteudo }),
+        body: JSON.stringify({ agenteId, telefone, tipo, conteudo, ...(duration ? { duration } : {}) }),
       })
-      if (!res.ok) setMessages(prev => prev.filter(m => m.id !== tempId))
+      if (!res.ok) {
+        // Só remove o temp se foi erro HTTP real (não warning de entrega)
+        setMessages(prev => prev.filter(m => m.id !== tempId))
+      }
     } finally {
       setSending(false)
     }
@@ -1302,11 +1312,18 @@ function LeadDrawer({ lead, onClose, onEdit, onDelete }) {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       audioChunksRef.current = []
-      const mr = new MediaRecorder(stream)
+      recordingSecondsRef.current = 0
+      setRecordingSeconds(0)
+      const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus'].find(t => MediaRecorder.isTypeSupported(t)) || ''
+      const mr = new MediaRecorder(stream, mimeType ? { mimeType } : {})
       mr.ondataavailable = e => { if (e.data.size > 0) audioChunksRef.current.push(e.data) }
       mr.start()
       mediaRecorderRef.current = mr
       setRecording(true)
+      recordingTimerRef.current = setInterval(() => {
+        recordingSecondsRef.current += 1
+        setRecordingSeconds(recordingSecondsRef.current)
+      }, 1000)
     } catch {
       alert('Permissão de microfone negada.')
     }
@@ -1314,23 +1331,36 @@ function LeadDrawer({ lead, onClose, onEdit, onDelete }) {
 
   const stopRecording = async () => {
     if (!mediaRecorderRef.current) return
+    clearInterval(recordingTimerRef.current)
+    const duration = recordingSecondsRef.current
     setRecording(false)
+    setRecordingSeconds(0)
     mediaRecorderRef.current.stop()
     mediaRecorderRef.current.stream?.getTracks().forEach(t => t.stop())
     await new Promise(r => { mediaRecorderRef.current.onstop = r })
-    const blob = new Blob(audioChunksRef.current, { type: 'audio/ogg; codecs=opus' })
-    const fileName = `ptt_${Date.now()}.ogg`
-    const { error } = await supabase.storage.from('chat-media').upload(fileName, blob, { contentType: 'audio/ogg' })
+    const mimeType = mediaRecorderRef.current.mimeType || 'audio/webm'
+    const ext = mimeType.includes('ogg') ? 'ogg' : 'webm'
+    const blob = new Blob(audioChunksRef.current, { type: mimeType })
+    const fileName = `ptt_${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('chat-media').upload(fileName, blob, { contentType: mimeType })
     if (error) { console.error('Upload áudio:', error); return }
     const { data: pub } = supabase.storage.from('chat-media').getPublicUrl(fileName)
-    await sendMessage('ptt', pub.publicUrl)
+    await sendMessage('ptt', pub.publicUrl, Math.max(1, duration))
   }
 
   const sendMedia = async (file) => {
     const tipo = file.type.startsWith('image/') ? 'image' : 'document'
-    const fileName = `${tipo}_${Date.now()}_${file.name}`
+    const ext = file.name.split('.').pop() || (tipo === 'image' ? 'jpg' : 'bin')
+    const fileName = `${tipo}_${Date.now()}.${ext}`
+    setSending(true)
     const { error } = await supabase.storage.from('chat-media').upload(fileName, file, { contentType: file.type })
-    if (error) { console.error('Upload mídia:', error); return }
+    if (error) {
+      setSending(false)
+      console.error('Upload mídia:', error)
+      alert(`Erro ao enviar: ${error.message}`)
+      return
+    }
+    setSending(false)
     const { data: pub } = supabase.storage.from('chat-media').getPublicUrl(fileName)
     await sendMessage(tipo, pub.publicUrl)
   }
@@ -1421,7 +1451,7 @@ function LeadDrawer({ lead, onClose, onEdit, onDelete }) {
             return (
               <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isRight ? 'flex-end' : 'flex-start' }}>
                 <div style={{ maxWidth: '72%', padding: '10px 14px', borderRadius: bubbleRadius, background: bubbleBg, border: isRight ? 'none' : `1px solid ${co.border}`, color: bubbleColor, fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                  {(mediaType === 'ptt' || mediaType === 'audio') ? (
+                  {(() => { const isAudioMsg = (mediaType === 'ptt' || mediaType === 'audio') || content?.startsWith('[ptt') || (mediaUrl && /\.(mp3|ogg|aac|m4a|wav|webm|oga)(\?|#|$)/i.test(mediaUrl)); return isAudioMsg })() ? (
                     <PttPlayer
                       messageId={msg.messageId}
                       agenteId={agenteId}
@@ -1466,25 +1496,32 @@ function LeadDrawer({ lead, onClose, onEdit, onDelete }) {
         </div>
 
         {/* Input bar */}
-        <input ref={fileInputRef} type="file" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.zip" style={{ display: 'none' }}
+        <input ref={imageInputRef} type="file" accept="image/*" style={{ display: 'none' }}
+          onChange={e => { if (e.target.files[0]) { sendMedia(e.target.files[0]); e.target.value = '' } }} />
+        <input ref={fileInputRef} type="file" accept="application/pdf,.doc,.docx,.xls,.xlsx,.zip" style={{ display: 'none' }}
           onChange={e => { if (e.target.files[0]) { sendMedia(e.target.files[0]); e.target.value = '' } }} />
         <div style={{ padding: '12px 16px', borderTop: `1px solid ${co.border}`, display: 'flex', gap: 8, alignItems: 'center', background: co.bgCard, flexShrink: 0 }}>
+          <button onClick={() => imageInputRef.current?.click()} title="Enviar imagem" disabled={sending || recording}
+            style={{ width: 36, height: 36, borderRadius: 8, background: co.bgInput, border: `1px solid ${co.border}`, color: co.textMuted, fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, opacity: (sending || recording) ? 0.4 : 1 }}>
+            🖼️
+          </button>
           <button onClick={() => fileInputRef.current?.click()} title="Enviar arquivo" disabled={sending || recording}
             style={{ width: 36, height: 36, borderRadius: 8, background: co.bgInput, border: `1px solid ${co.border}`, color: co.textMuted, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, opacity: (sending || recording) ? 0.4 : 1 }}>
             📎
           </button>
           <input
-            value={recording ? '' : inputText}
-            onChange={e => setInputText(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendText() } }}
-            placeholder={recording ? '● Gravando...' : 'Digite uma mensagem...'}
-            disabled={sending || recording}
+            value={recording ? `● ${recordingSeconds}s` : inputText}
+            onChange={recording ? () => {} : e => setInputText(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !recording) { e.preventDefault(); sendText() } }}
+            placeholder="Digite uma mensagem..."
+            readOnly={recording}
+            disabled={sending}
             style={{ flex: 1, padding: '9px 14px', background: co.bgInput, border: `1px solid ${recording ? co.danger : co.border}`, borderRadius: 24, color: recording ? co.danger : co.text, fontSize: 13, outline: 'none', fontFamily: 'inherit', cursor: recording ? 'default' : 'text' }}
           />
-          <button onMouseDown={startRecording} onMouseUp={stopRecording} onTouchStart={startRecording} onTouchEnd={stopRecording}
-            title="Segurar para gravar áudio" disabled={sending}
-            style={{ width: 36, height: 36, borderRadius: '50%', background: recording ? co.dangerBg : co.bgInput, border: `1px solid ${recording ? co.danger : co.border}`, color: recording ? co.danger : co.textMuted, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.15s', opacity: sending ? 0.4 : 1 }}>
-            🎤
+          <button onClick={recording ? stopRecording : startRecording}
+            title={recording ? 'Clique para enviar áudio' : 'Clique para gravar áudio'} disabled={sending}
+            style={{ width: 36, height: 36, borderRadius: '50%', background: recording ? co.danger : co.bgInput, border: `1px solid ${recording ? co.danger : co.border}`, color: recording ? '#fff' : co.textMuted, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.15s', opacity: sending ? 0.4 : 1 }}>
+            {recording ? '⏹' : '🎤'}
           </button>
           <button onClick={sendText} disabled={sending || recording || !inputText.trim()}
             style={{ width: 36, height: 36, borderRadius: '50%', background: co.primary, border: 'none', color: '#fff', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, opacity: (sending || recording || !inputText.trim()) ? 0.4 : 1, transition: 'opacity 0.15s' }}>
@@ -1518,11 +1555,15 @@ export function ChatView({ clienteId }) {
   const [inputText, setInputText] = useState('')
   const [sending, setSending] = useState(false)
   const [recording, setRecording] = useState(false)
+  const [recordingSeconds, setRecordingSeconds] = useState(0)
   const [lightboxUrl, setLightboxUrl] = useState(null)
   const messagesEndRef = useRef(null)
   const fileInputRef = useRef(null)
+  const imageInputRef = useRef(null)
   const mediaRecorderRef = useRef(null)
   const audioChunksRef = useRef([])
+  const recordingTimerRef = useRef(null)
+  const recordingSecondsRef = useRef(0)
 
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') setLightboxUrl(null) }
@@ -1653,19 +1694,22 @@ export function ChatView({ clienteId }) {
 
   const displayName = selectedLead?.nome || selectedConv?.lead?.nome || selectedSession?.replace(/(\d{2})(\d{2})(\d{4,5})(\d{4})/, '+$1 ($2) $3-$4') || '?'
 
-  const sendMessage = async (tipo, conteudo) => {
+  const sendMessage = async (tipo, conteudo, duration = null) => {
     const agenteId = getAgenteId()
     if (!agenteId || !selectedSession || !conteudo) return
 
     const tempId = `temp_${Date.now()}`
-    setMessages(prev => [...prev, { id: tempId, type: 'agent', content: conteudo, mediaUrl: tipo !== 'text' ? conteudo : null, mediaType: tipo !== 'text' ? tipo : null }])
+    const displayContent = tipo === 'text' ? conteudo
+      : tipo === 'ptt' && duration ? `[ptt:${duration}s] ${conteudo}`
+      : `[${tipo}] ${conteudo}`
+    setMessages(prev => [...prev, { id: tempId, type: 'agent', content: displayContent, mediaUrl: tipo !== 'text' ? conteudo : null, mediaType: tipo !== 'text' ? tipo : null }])
 
     setSending(true)
     try {
       const res = await fetch('/api/chat/enviar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ agenteId, telefone: selectedSession, tipo, conteudo }),
+        body: JSON.stringify({ agenteId, telefone: selectedSession, tipo, conteudo, ...(duration ? { duration } : {}) }),
       })
       if (!res.ok) setMessages(prev => prev.filter(m => m.id !== tempId))
     } finally {
@@ -1684,11 +1728,18 @@ export function ChatView({ clienteId }) {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       audioChunksRef.current = []
-      const mr = new MediaRecorder(stream)
+      recordingSecondsRef.current = 0
+      setRecordingSeconds(0)
+      const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus'].find(t => MediaRecorder.isTypeSupported(t)) || ''
+      const mr = new MediaRecorder(stream, mimeType ? { mimeType } : {})
       mr.ondataavailable = e => { if (e.data.size > 0) audioChunksRef.current.push(e.data) }
       mr.start()
       mediaRecorderRef.current = mr
       setRecording(true)
+      recordingTimerRef.current = setInterval(() => {
+        recordingSecondsRef.current += 1
+        setRecordingSeconds(recordingSecondsRef.current)
+      }, 1000)
     } catch {
       alert('Permissão de microfone negada.')
     }
@@ -1696,23 +1747,36 @@ export function ChatView({ clienteId }) {
 
   const stopRecording = async () => {
     if (!mediaRecorderRef.current) return
+    clearInterval(recordingTimerRef.current)
+    const duration = recordingSecondsRef.current
     setRecording(false)
+    setRecordingSeconds(0)
     mediaRecorderRef.current.stop()
     mediaRecorderRef.current.stream?.getTracks().forEach(t => t.stop())
     await new Promise(r => { mediaRecorderRef.current.onstop = r })
-    const blob = new Blob(audioChunksRef.current, { type: 'audio/ogg; codecs=opus' })
-    const fileName = `ptt_${Date.now()}.ogg`
-    const { error } = await supabase.storage.from('chat-media').upload(fileName, blob, { contentType: 'audio/ogg' })
+    const mimeType = mediaRecorderRef.current.mimeType || 'audio/webm'
+    const ext = mimeType.includes('ogg') ? 'ogg' : 'webm'
+    const blob = new Blob(audioChunksRef.current, { type: mimeType })
+    const fileName = `ptt_${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('chat-media').upload(fileName, blob, { contentType: mimeType })
     if (error) { console.error('Upload áudio:', error); return }
     const { data: pub } = supabase.storage.from('chat-media').getPublicUrl(fileName)
-    await sendMessage('ptt', pub.publicUrl)
+    await sendMessage('ptt', pub.publicUrl, Math.max(1, duration))
   }
 
   const sendMedia = async (file) => {
     const tipo = file.type.startsWith('image/') ? 'image' : 'document'
-    const fileName = `${tipo}_${Date.now()}_${file.name}`
+    const ext = file.name.split('.').pop() || (tipo === 'image' ? 'jpg' : 'bin')
+    const fileName = `${tipo}_${Date.now()}.${ext}`
+    setSending(true)
     const { error } = await supabase.storage.from('chat-media').upload(fileName, file, { contentType: file.type })
-    if (error) { console.error('Upload mídia:', error); return }
+    if (error) {
+      setSending(false)
+      console.error('Upload mídia:', error)
+      alert(`Erro ao enviar: ${error.message}`)
+      return
+    }
+    setSending(false)
     const { data: pub } = supabase.storage.from('chat-media').getPublicUrl(fileName)
     await sendMessage(tipo, pub.publicUrl)
   }
@@ -1811,7 +1875,7 @@ export function ChatView({ clienteId }) {
               return (
                 <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isRight ? 'flex-end' : 'flex-start' }}>
                   <div style={{ maxWidth: '68%', padding: '10px 14px', borderRadius: bubbleRadius, background: bubbleBg, border: isRight ? 'none' : `1px solid ${co.border}`, color: bubbleColor, fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                    {(mediaType === 'ptt' || mediaType === 'audio') ? (
+                    {(() => { const isAudioMsg = (mediaType === 'ptt' || mediaType === 'audio') || content?.startsWith('[ptt') || (mediaUrl && /\.(mp3|ogg|aac|m4a|wav|webm|oga)(\?|#|$)/i.test(mediaUrl)); return isAudioMsg })() ? (
                       <PttPlayer
                         messageId={msg.messageId}
                         agenteId={getAgenteId()}
@@ -1857,25 +1921,32 @@ export function ChatView({ clienteId }) {
           </div>
 
           {/* INPUT BAR */}
-          <input ref={fileInputRef} type="file" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.zip" style={{ display: 'none' }}
+          <input ref={imageInputRef} type="file" accept="image/*" style={{ display: 'none' }}
+            onChange={e => { if (e.target.files[0]) { sendMedia(e.target.files[0]); e.target.value = '' } }} />
+          <input ref={fileInputRef} type="file" accept="application/pdf,.doc,.docx,.xls,.xlsx,.zip" style={{ display: 'none' }}
             onChange={e => { if (e.target.files[0]) { sendMedia(e.target.files[0]); e.target.value = '' } }} />
           <div style={{ padding: '12px 20px', borderTop: `1px solid ${co.border}`, display: 'flex', gap: 8, alignItems: 'center', background: co.bgCard, flexShrink: 0 }}>
+            <button onClick={() => imageInputRef.current?.click()} title="Enviar imagem" disabled={sending || recording}
+              style={{ width: 38, height: 38, borderRadius: 8, background: co.bgInput, border: `1px solid ${co.border}`, color: co.textMuted, fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, opacity: (sending || recording) ? 0.4 : 1 }}>
+              🖼️
+            </button>
             <button onClick={() => fileInputRef.current?.click()} title="Enviar arquivo" disabled={sending || recording}
               style={{ width: 38, height: 38, borderRadius: 8, background: co.bgInput, border: `1px solid ${co.border}`, color: co.textMuted, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, opacity: (sending || recording) ? 0.4 : 1 }}>
               📎
             </button>
             <input
-              value={recording ? '' : inputText}
-              onChange={e => setInputText(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendText() } }}
-              placeholder={recording ? '● Gravando...' : 'Digite uma mensagem...'}
-              disabled={sending || recording}
+              value={recording ? `● ${recordingSeconds}s` : inputText}
+              onChange={recording ? () => {} : e => setInputText(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !recording) { e.preventDefault(); sendText() } }}
+              placeholder="Digite uma mensagem..."
+              readOnly={recording}
+              disabled={sending}
               style={{ flex: 1, padding: '10px 16px', background: co.bgInput, border: `1px solid ${recording ? co.danger : co.border}`, borderRadius: 24, color: recording ? co.danger : co.text, fontSize: 13, outline: 'none', fontFamily: 'inherit', cursor: recording ? 'default' : 'text' }}
             />
-            <button onMouseDown={startRecording} onMouseUp={stopRecording} onTouchStart={startRecording} onTouchEnd={stopRecording}
-              title="Segurar para gravar áudio" disabled={sending}
-              style={{ width: 38, height: 38, borderRadius: '50%', background: recording ? co.dangerBg : co.bgInput, border: `1px solid ${recording ? co.danger : co.border}`, color: recording ? co.danger : co.textMuted, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.15s', opacity: sending ? 0.4 : 1 }}>
-              🎤
+            <button onClick={recording ? stopRecording : startRecording}
+              title={recording ? 'Clique para enviar áudio' : 'Clique para gravar áudio'} disabled={sending}
+              style={{ width: 38, height: 38, borderRadius: '50%', background: recording ? co.danger : co.bgInput, border: `1px solid ${recording ? co.danger : co.border}`, color: recording ? '#fff' : co.textMuted, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.15s', opacity: sending ? 0.4 : 1 }}>
+              {recording ? '⏹' : '🎤'}
             </button>
             <button onClick={sendText} disabled={sending || recording || !inputText.trim()}
               style={{ width: 38, height: 38, borderRadius: '50%', background: co.primary, border: 'none', color: '#fff', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, opacity: (sending || recording || !inputText.trim()) ? 0.4 : 1, transition: 'opacity 0.15s' }}>

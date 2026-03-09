@@ -91,6 +91,29 @@ export async function GET(req) {
           } else {
             const json = await r.json().catch(() => null)
             console.log('[audio-proxy] UazAPI json:', JSON.stringify(json)?.substring(0, 200))
+            // Caso 1: UazAPI retorna fileURL (áudio já decodificado hospedado no servidor UazAPI)
+            if (json?.fileURL) {
+              try {
+                const audioResp = await fetch(json.fileURL, { signal: AbortSignal.timeout(15000) })
+                if (audioResp.ok) {
+                  const buf = Buffer.from(await audioResp.arrayBuffer())
+                  if (buf.length > 100) {
+                    const mime = json.mimetype || 'audio/mpeg'
+                    console.log('[audio-proxy] fileURL ok, size:', buf.length, 'mime:', mime)
+                    return new Response(buf, {
+                      headers: {
+                        'Content-Type': mime,
+                        'Content-Length': String(buf.length),
+                        'Cache-Control': 'public, max-age=3600',
+                      },
+                    })
+                  }
+                }
+              } catch (e) {
+                console.error('[audio-proxy] fileURL fetch erro:', e.message)
+              }
+            }
+            // Caso 2: UazAPI retorna base64 direto
             if (json?.data && typeof json.data === 'string') {
               const buf = Buffer.from(json.data, 'base64')
               if (buf.length > 100) {
