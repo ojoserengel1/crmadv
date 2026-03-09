@@ -10,6 +10,7 @@ function pathnameToTab(pathname) {
   if (pathname.startsWith('/leads')) return 'kanban'
   if (pathname.startsWith('/chat')) return 'chat'
   if (pathname.startsWith('/configuracoes')) return 'config'
+  if (pathname.startsWith('/analytics')) return 'analytics'
   return null
 }
 
@@ -39,6 +40,7 @@ export default function AppLayout({ children }) {
     else if (tab === 'chat') router.push('/chat')
     else if (tab === 'config') router.push('/configuracoes')
     else if (tab === 'clientes') router.push('/admin')
+    else if (tab === 'analytics') router.push('/analytics')
   }
 
   const handleConfigNav = (agenteId) => {
