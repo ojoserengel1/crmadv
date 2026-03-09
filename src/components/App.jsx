@@ -159,6 +159,7 @@ export function Sidebar({ user, activeTab, onTabChange, onLogout, onConfigNav })
     : [
         { id: "kanban", label: "Leads", icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="10" rx="1"/><rect x="14" y="17" width="7" height="4" rx="1"/></svg> },
         { id: "chat", label: "Chat", icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> },
+        { id: "analytics", label: "Analytics", icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg> },
         { id: "config", label: "Configurações", icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> },
       ]
 
@@ -2405,6 +2406,228 @@ export function AdminEditorView({ cliente: initialCliente }) {
 }
 
 // ============================================================
+// ANALYTICS VIEW
+// ============================================================
+
+function BarChart({ data, maxVal }) {
+  const h = 160
+  const showEvery = data.length <= 14 ? 1 : data.length <= 31 ? 2 : Math.ceil(data.length / 14)
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: h + 28, paddingBottom: 28, overflow: 'hidden' }}>
+      {data.map((d, i) => {
+        const totalH = maxVal > 0 ? Math.round((d.total / maxVal) * h) : 0
+        const qualH = maxVal > 0 ? Math.round((d.qual / maxVal) * h) : 0
+        return (
+          <div key={d.date} title={`${d.label}: ${d.total} recebidos, ${d.qual} qualificados`}
+            style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: h + 28, minWidth: 0 }}>
+            <div style={{ width: '100%', position: 'relative', height: totalH || 2, minHeight: 2 }}>
+              <div style={{ position: 'absolute', bottom: 0, left: '10%', right: '10%', height: totalH || 2, background: co.primary, opacity: 0.45, borderRadius: '3px 3px 0 0' }} />
+              <div style={{ position: 'absolute', bottom: 0, left: '10%', right: '10%', height: qualH, background: co.success, borderRadius: '3px 3px 0 0' }} />
+            </div>
+            <div style={{ fontSize: 9, color: co.textDim, marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden',
+              transform: data.length > 20 ? 'rotate(-45deg) translateX(-4px)' : 'none', transformOrigin: 'top left',
+              display: i % showEvery === 0 ? 'block' : 'none' }}>
+              {d.label}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+export function AnalyticsView({ clienteId }) {
+  const [preset, setPreset] = useState('30d')
+  const [customFrom, setCustomFrom] = useState('')
+  const [customTo, setCustomTo] = useState('')
+  const [leads, setLeads] = useState([])
+  const [agentes, setAgentes] = useState([])
+  const [agenteFilter, setAgenteFilter] = useState('all')
+  const [loading, setLoading] = useState(false)
+
+  const getRange = () => {
+    const today = new Date(); today.setHours(23, 59, 59, 999)
+    if (preset === '7d') {
+      const from = new Date(); from.setDate(from.getDate() - 6); from.setHours(0, 0, 0, 0)
+      return { from, to: today }
+    }
+    if (preset === '30d') {
+      const from = new Date(); from.setDate(from.getDate() - 29); from.setHours(0, 0, 0, 0)
+      return { from, to: today }
+    }
+    if (preset === 'mes') {
+      const t = new Date()
+      const from = new Date(t.getFullYear(), t.getMonth(), 1)
+      return { from, to: today }
+    }
+    if (preset === 'custom' && customFrom && customTo) {
+      return { from: new Date(customFrom + 'T00:00:00'), to: new Date(customTo + 'T23:59:59') }
+    }
+    return null
+  }
+
+  useEffect(() => {
+    if (!clienteId) return
+    supabase.from('agentes').select('id, nome').eq('cliente_id', clienteId)
+      .then(({ data }) => setAgentes(data || []))
+  }, [clienteId])
+
+  useEffect(() => {
+    if (!clienteId) return
+    const range = getRange()
+    if (!range) return
+    setLoading(true)
+    let q = supabase.from('leads')
+      .select('id, created_at, status, agente_id, nome')
+      .eq('cliente_id', clienteId)
+      .gte('created_at', range.from.toISOString())
+      .lte('created_at', range.to.toISOString())
+      .order('created_at', { ascending: true })
+    if (agenteFilter !== 'all') q = q.eq('agente_id', agenteFilter)
+    q.then(({ data }) => { setLeads(data || []); setLoading(false) })
+  }, [clienteId, preset, customFrom, customTo, agenteFilter])
+
+  // Métricas
+  const total = leads.length
+  const qualificados = leads.filter(l => l.status?.toLowerCase().includes('qualif')).length
+  const taxa = total > 0 ? Math.round((qualificados / total) * 100) : 0
+
+  // Gerar todos os dias do range
+  const range = getRange()
+  const days = []
+  if (range) {
+    const d = new Date(range.from); d.setHours(0, 0, 0, 0)
+    const end = new Date(range.to); end.setHours(0, 0, 0, 0)
+    while (d <= end) { days.push(d.toISOString().substring(0, 10)); d.setDate(d.getDate() + 1) }
+  }
+
+  const byDay = {}
+  leads.forEach(l => {
+    const day = l.created_at?.substring(0, 10)
+    if (!day) return
+    if (!byDay[day]) byDay[day] = { total: 0, qual: 0 }
+    byDay[day].total++
+    if (l.status?.toLowerCase().includes('qualif')) byDay[day].qual++
+  })
+
+  const chartData = days.map(d => {
+    const parts = d.split('-')
+    return { date: d, label: `${parts[2]}/${parts[1]}`, total: byDay[d]?.total || 0, qual: byDay[d]?.qual || 0 }
+  })
+  const maxVal = Math.max(...chartData.map(d => d.total), 1)
+
+  // Distribuição por status
+  const statusMap = {}
+  leads.forEach(l => { const s = l.status || 'Sem status'; statusMap[s] = (statusMap[s] || 0) + 1 })
+  const statusList = Object.entries(statusMap).sort((a, b) => b[1] - a[1])
+
+  const presetBtns = [
+    { id: '7d', label: 'Últimos 7 dias' },
+    { id: '30d', label: 'Últimos 30 dias' },
+    { id: 'mes', label: 'Este mês' },
+    { id: 'custom', label: 'Personalizado' },
+  ]
+
+  return (
+    <div style={{ height: '100vh', overflowY: 'auto', background: co.bg, padding: '32px 40px' }}>
+      {/* Header */}
+      <div style={{ marginBottom: 24 }}>
+        <h2 style={{ fontSize: 22, fontWeight: 700, color: co.text, margin: 0 }}>Analytics</h2>
+        <p style={{ color: co.textMuted, fontSize: 13, marginTop: 4, marginBottom: 0 }}>Desempenho de qualificação de leads</p>
+      </div>
+
+      {/* Filtros */}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 28, flexWrap: 'wrap' }}>
+        {presetBtns.map(p => (
+          <button key={p.id} onClick={() => setPreset(p.id)}
+            style={{ padding: '7px 16px', borderRadius: 8, border: `1px solid ${preset === p.id ? co.primary : co.border}`, background: preset === p.id ? co.primaryBg : co.bgCard, color: preset === p.id ? co.primary : co.textMuted, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', fontWeight: preset === p.id ? 600 : 400 }}>
+            {p.label}
+          </button>
+        ))}
+        {preset === 'custom' && (
+          <>
+            <input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)}
+              style={{ padding: '7px 10px', borderRadius: 8, border: `1px solid ${co.border}`, background: co.bgCard, color: co.text, fontSize: 13, fontFamily: 'inherit', colorScheme: 'dark' }} />
+            <span style={{ color: co.textMuted, fontSize: 13 }}>até</span>
+            <input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)}
+              style={{ padding: '7px 10px', borderRadius: 8, border: `1px solid ${co.border}`, background: co.bgCard, color: co.text, fontSize: 13, fontFamily: 'inherit', colorScheme: 'dark' }} />
+          </>
+        )}
+        {agentes.length > 1 && (
+          <select value={agenteFilter} onChange={e => setAgenteFilter(e.target.value)}
+            style={{ marginLeft: 'auto', padding: '7px 12px', borderRadius: 8, border: `1px solid ${co.border}`, background: co.bgCard, color: co.text, fontSize: 13, fontFamily: 'inherit', cursor: 'pointer' }}>
+            <option value="all">Todos os agentes</option>
+            {agentes.map(a => <option key={a.id} value={a.id}>{a.nome}</option>)}
+          </select>
+        )}
+      </div>
+
+      {/* KPI Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
+        {[
+          { label: 'Total de Leads', value: total, color: co.primary, sub: 'leads recebidos no período' },
+          { label: 'Leads Qualificados', value: qualificados, color: co.success, sub: 'concluíram a qualificação' },
+          { label: 'Taxa de Qualificação', value: `${taxa}%`, color: co.warning, sub: `${qualificados} de ${total} leads` },
+        ].map(kpi => (
+          <div key={kpi.label} style={{ background: co.bgCard, border: `1px solid ${co.border}`, borderRadius: 12, padding: '24px 28px' }}>
+            <div style={{ fontSize: 11, color: co.textMuted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>{kpi.label}</div>
+            <div style={{ fontSize: 40, fontWeight: 700, color: kpi.color, lineHeight: 1 }}>{loading ? '—' : kpi.value}</div>
+            <div style={{ fontSize: 12, color: co.textDim, marginTop: 8 }}>{kpi.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Gráfico de barras */}
+      <div style={{ background: co.bgCard, border: `1px solid ${co.border}`, borderRadius: 12, padding: '20px 24px', marginBottom: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <span style={{ fontSize: 14, fontWeight: 600, color: co.text }}>Leads por dia</span>
+          <div style={{ display: 'flex', gap: 16 }}>
+            <span style={{ fontSize: 12, color: co.textMuted, display: 'flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ width: 10, height: 10, borderRadius: 2, background: co.primary, opacity: 0.6, display: 'inline-block' }} /> Recebidos
+            </span>
+            <span style={{ fontSize: 12, color: co.textMuted, display: 'flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ width: 10, height: 10, borderRadius: 2, background: co.success, display: 'inline-block' }} /> Qualificados
+            </span>
+          </div>
+        </div>
+        {loading ? (
+          <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', color: co.textDim, fontSize: 13 }}>Carregando...</div>
+        ) : chartData.length === 0 ? (
+          <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', color: co.textDim, fontSize: 13 }}>Nenhum dado no período</div>
+        ) : (
+          <BarChart data={chartData} maxVal={maxVal} />
+        )}
+      </div>
+
+      {/* Distribuição por status */}
+      {!loading && statusList.length > 0 && (
+        <div style={{ background: co.bgCard, border: `1px solid ${co.border}`, borderRadius: 12, padding: '20px 24px', marginBottom: 40 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: co.text, marginBottom: 16 }}>Distribuição por Status</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {statusList.map(([status, count]) => {
+              const pct = total > 0 ? Math.round((count / total) * 100) : 0
+              const barColor = status.toLowerCase().includes('qualif') ? co.success
+                : status.toLowerCase().includes('descar') ? co.danger : co.primary
+              return (
+                <div key={status}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+                    <span style={{ fontSize: 13, color: co.text }}>{status}</span>
+                    <span style={{ fontSize: 13, color: co.textMuted, fontVariantNumeric: 'tabular-nums' }}>{count} <span style={{ color: co.textDim }}>({pct}%)</span></span>
+                  </div>
+                  <div style={{ height: 6, background: co.border, borderRadius: 3, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${pct}%`, background: barColor, borderRadius: 3, transition: 'width 0.5s ease' }} />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ============================================================
 // MAIN APP
 // ============================================================
 export default function App() {
@@ -2493,6 +2716,7 @@ export default function App() {
     } else {
       if (activeTab === 'kanban') return <KanbanView clienteId={clienteId} />
       if (activeTab === 'chat') return <ChatView clienteId={clienteId} />
+      if (activeTab === 'analytics') return <AnalyticsView clienteId={clienteId} />
       if (activeTab === 'config') return <ConfigView clienteId={clienteId} initAgenteId={configInitAgenteId} />
     }
     return null
