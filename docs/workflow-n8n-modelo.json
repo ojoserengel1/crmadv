@@ -1,10 +1,10 @@
 {
-  "name": "[Rengel Advocacia] IA Qualificação",
+  "name": "[Rengel Advocacia] IA Triagem",
   "nodes": [
     {
       "parameters": {
         "httpMethod": "POST",
-        "path": "44d32ad6-0b39-4ac4-9427-0cb78648fa46",
+        "path": "8c283928-0094-4985-9c7c-d73c935889bd",
         "options": {}
       },
       "type": "n8n-nodes-base.webhook",
@@ -13,9 +13,9 @@
         -3136,
         -1360
       ],
-      "id": "4273dbe7-c196-4583-8905-16ac611f0ddf",
+      "id": "3a36229b-4b18-4385-a2cb-c80911da009c",
       "name": "Webhook",
-      "webhookId": "44d32ad6-0b39-4ac4-9427-0cb78648fa46"
+      "webhookId": "8c283928-0094-4985-9c7c-d73c935889bd"
     },
     {
       "parameters": {
@@ -37,7 +37,7 @@
         -2720,
         -1360
       ],
-      "id": "b9e28e55-c574-429e-b526-701b9a6391ca",
+      "id": "d92ce323-132f-4fd8-bca5-423a89594eb5",
       "name": "TELEFONE"
     },
     {
@@ -150,7 +150,7 @@
         -1760,
         -1360
       ],
-      "id": "ac45f340-553d-432c-b3ff-860ceaaeb2b4",
+      "id": "65f2d165-33ab-47d6-ada8-a433a810d521",
       "name": "DADOS LEAD"
     },
     {
@@ -184,7 +184,7 @@
         -624,
         -1360
       ],
-      "id": "be13b8c4-bf32-42cb-83b8-a71f30ec6a07",
+      "id": "feaca4b1-8a8f-4761-99b0-9a680e01472d",
       "name": "EIXSTE OU NAO"
     },
     {
@@ -201,7 +201,7 @@
         3648,
         -1392
       ],
-      "id": "fa8c8492-87cd-486d-8e7c-613f2eba7811",
+      "id": "51566e90-5321-484e-85eb-0ec6be87f1c9",
       "name": "AI Agent"
     },
     {
@@ -214,7 +214,7 @@
         3568,
         -1088
       ],
-      "id": "a7a7dee1-9da9-4f17-b98f-b5da8e2259a8",
+      "id": "565d7fe3-3b81-4e20-94f2-f5bd3b765970",
       "name": "API - IA QUALIFICACAO - ADV",
       "credentials": {
         "googlePalmApi": {
@@ -310,7 +310,7 @@
         80,
         -1360
       ],
-      "id": "7bd6821f-a23f-477e-a535-22ae96c4176d",
+      "id": "023ce3ca-ff4a-49ef-9082-6b18ffb4246e",
       "name": "Switch1"
     },
     {
@@ -326,7 +326,7 @@
         528,
         -1520
       ],
-      "id": "ea21afdb-eda6-4d7f-830b-dbdf519ce1dc",
+      "id": "e052bd85-2d27-4805-82fc-1654959f1a65",
       "name": "Armazenar Texto",
       "credentials": {
         "redis": {
@@ -349,7 +349,7 @@
         1536,
         -1392
       ],
-      "id": "68b8d5e7-b535-4f3e-b6db-a5ebb6e75bb0",
+      "id": "f12bb8d4-23a5-4cf9-93e8-c31060d011df",
       "name": "Pegar Mensagem ",
       "credentials": {
         "redis": {
@@ -368,7 +368,7 @@
         2112,
         -1392
       ],
-      "id": "3f47c4ec-fbec-4913-8ea9-2a1138bb3393",
+      "id": "2c85dfec-cd5a-4217-abfc-09dc3f6603e3",
       "name": "Juntar Mensagens1"
     },
     {
@@ -381,9 +381,9 @@
         1728,
         -1392
       ],
-      "id": "724ff8de-42b9-4122-af31-2c0cb9f492e9",
+      "id": "b676c924-5f44-4bb3-94bc-832cca129155",
       "name": "Delay",
-      "webhookId": "df0f3099-cd9c-48ff-8b70-104bfc7d996f"
+      "webhookId": "3d3207d3-8324-4e37-ab35-ba7ef6706d7f"
     },
     {
       "parameters": {
@@ -395,7 +395,7 @@
         4832,
         -1392
       ],
-      "id": "693048e2-cb1e-43f2-896c-5c9985edf5ba",
+      "id": "6da2f743-7733-43d1-963d-02e8a64ed503",
       "name": "Loop Over Items"
     },
     {
@@ -409,7 +409,7 @@
         4624,
         -1392
       ],
-      "id": "9dba036d-6588-40cd-82b2-35f61ed55c8f",
+      "id": "89a3664e-cf2a-44e4-b7c0-5d75c3304255",
       "name": "Split Out",
       "notes": "TEMPLATE DESENVOLVIDO POR NOCODE STARTUP\nhttps://nocodestartup.io/\n\nFORMAÇÃO GESTOR DE AGENTES DE IA:\nhttps://nocodestartup.io/formacao-gestor-agentes-ia/"
     },
@@ -424,7 +424,7 @@
         3984,
         -1392
       ],
-      "id": "08cb5d06-a0ae-4fab-b228-84ed40ba93a3",
+      "id": "329187f1-4a38-4f7a-99d7-bd53ac09d38d",
       "name": "Redis",
       "credentials": {
         "redis": {
@@ -443,7 +443,7 @@
         4416,
         -1392
       ],
-      "id": "f14db769-67d5-4f2f-94fc-e862d83abb7d",
+      "id": "089807f9-ed67-4dc3-ab09-32e55cdf232e",
       "name": "Code in JavaScript1"
     },
     {
@@ -460,7 +460,7 @@
         1904,
         -1392
       ],
-      "id": "0bc21a5a-e868-4e69-b62f-2fd2be79e843",
+      "id": "2c5028f7-01be-4f63-afb4-bd25251e21c4",
       "name": "Pegar Mensagem 1",
       "credentials": {
         "redis": {
@@ -500,7 +500,7 @@
         2304,
         -1392
       ],
-      "id": "6c416b7b-cc07-4c31-a191-5281c928d83f",
+      "id": "9139bd5c-5b7d-488a-85eb-c557ebae888a",
       "name": "Verificar Combinação2"
     },
     {
@@ -516,7 +516,7 @@
         3744,
         -1152
       ],
-      "id": "be3dcec8-6114-4180-ba1f-965beb0aed52",
+      "id": "8959565d-a6e8-4f85-8b55-e077221568df",
       "name": "Postgres Chat Memory",
       "credentials": {
         "postgres": {
@@ -535,9 +535,9 @@
         5168,
         -1296
       ],
-      "id": "31769912-312f-42ca-a6dc-905cdfbfdff9",
+      "id": "cd63a5d8-2960-4350-85c1-1cfe65eb9e3b",
       "name": "Wait1",
-      "webhookId": "715bf9d8-1bc0-44aa-b949-33c99edf6a75"
+      "webhookId": "150fdea0-065e-4c2f-900f-9418008266a5"
     },
     {
       "parameters": {
@@ -570,7 +570,7 @@
         -2928,
         -1360
       ],
-      "id": "b4120c45-5aff-4efb-adc6-8231e88af332",
+      "id": "c660f40b-09ab-4df9-9dbf-fb378dc82912",
       "name": "Filter"
     },
     {
@@ -584,7 +584,7 @@
         -2176,
         -2784
       ],
-      "id": "dd2f3a67-b2d8-4842-b4ed-100443878d10",
+      "id": "1dfd85df-d76a-43e8-87f5-2c5973168320",
       "name": "APAGAR MEMÓRIA",
       "credentials": {
         "redis": {
@@ -633,7 +633,7 @@
         -1104,
         -1360
       ],
-      "id": "5bc655a7-62f6-46f5-8c31-db26897b86ae",
+      "id": "5811113d-8c99-4194-8169-579940183619",
       "name": "If"
     },
     {
@@ -648,7 +648,7 @@
         -1312,
         -1360
       ],
-      "id": "ed61d065-e486-4d97-abe5-d9b758f6a668",
+      "id": "e5bfd0e8-4ac8-44a6-b664-d9d12ecf62fd",
       "name": "Tem Conversa em Aberto?",
       "credentials": {
         "postgres": {
@@ -665,7 +665,7 @@
         -1056,
         -1088
       ],
-      "id": "d799c114-13c1-46ce-a294-8329a9eb0116",
+      "id": "9b9f7ad8-f2d7-445d-adc8-d6b4b72f39fa",
       "name": "No Operation, do nothing"
     },
     {
@@ -679,7 +679,7 @@
         -2496,
         -2784
       ],
-      "id": "1988ad4b-7c92-4768-81dc-53af1e1a1867",
+      "id": "7fd46ae9-b3cc-4b3c-9d8c-d9a67fff20b0",
       "name": "APAGAR MEMÓRIA1",
       "credentials": {
         "redis": {
@@ -700,7 +700,7 @@
         2928,
         -1392
       ],
-      "id": "c0d25bd8-9aa9-4ccd-9ae7-9da43e9306ba",
+      "id": "f62fe21e-25e8-4b3a-9c23-67a3c49df98f",
       "name": "Tem Conversa em Aberto?1",
       "credentials": {
         "postgres": {
@@ -740,7 +740,7 @@
         3072,
         -1392
       ],
-      "id": "827530fa-85b4-4676-a1af-c9530c411193",
+      "id": "45f77e32-f33d-42d3-8aeb-67a05bfda1f1",
       "name": "If1"
     },
     {
@@ -756,7 +756,7 @@
         1152,
         -1312
       ],
-      "id": "4f50f6cf-4456-4cd6-8fed-29a3a78deed5",
+      "id": "0e8a4fef-c73a-47f2-ab3f-89af87e6d7a0",
       "name": "Armazena Áudio",
       "credentials": {
         "redis": {
@@ -785,7 +785,7 @@
         768,
         -1072
       ],
-      "id": "ca4a1330-7d9d-441b-817e-77f0664320dc",
+      "id": "d5bc1967-5c7f-48c6-9854-a87ca5b5cbe0",
       "name": "Analizar Imagem",
       "credentials": {
         "openAiApi": {
@@ -807,7 +807,7 @@
         960,
         -1072
       ],
-      "id": "b42db225-f522-4c98-943c-f591c3238610",
+      "id": "10df698c-162f-4492-bc1b-32146d5b4227",
       "name": "Armazena Imagem",
       "credentials": {
         "redis": {
@@ -836,7 +836,7 @@
         944,
         -1312
       ],
-      "id": "df4561a4-c429-4c95-b0d6-5feab63d4f07",
+      "id": "1af14384-e0ec-4474-bd60-c7a8bbf1e262",
       "name": "RENOMEIA CAMPO3"
     },
     {
@@ -851,7 +851,7 @@
         752,
         -1312
       ],
-      "id": "eea70106-cec4-449a-a310-323ebdcced70",
+      "id": "959aa073-5424-4f98-abf1-34123c417d98",
       "name": "Transcribe a recording",
       "credentials": {
         "openAiApi": {
@@ -870,7 +870,7 @@
         -2496,
         -1360
       ],
-      "id": "82bc7151-ff38-4b21-a882-3e6e0c73c23c",
+      "id": "f7db5d09-1fc1-4a9b-a00f-9a0b1ed3e00a",
       "name": "FORMATAR TELEFONE E DATA"
     },
     {
@@ -903,7 +903,7 @@
         5040,
         -1488
       ],
-      "id": "4e9c70f2-8047-4801-9d1f-53f7cca1c175",
+      "id": "d67669f5-0ae5-4b1e-a0b5-830ed20df015",
       "name": "If2"
     },
     {
@@ -914,7 +914,7 @@
         5248,
         -1472
       ],
-      "id": "5b68aa50-3bb6-49ba-865f-101560946528",
+      "id": "e99e9e3c-84ab-40e9-8545-b39af7861a86",
       "name": "No Operation, do nothing1"
     },
     {
@@ -931,7 +931,7 @@
         5392,
         -1936
       ],
-      "id": "cb7e0edd-f0f2-4799-95b4-0bdf41fe26b0",
+      "id": "157fb773-f6b0-4005-8e15-c6d9713930a7",
       "name": "AI Agent1"
     },
     {
@@ -944,7 +944,7 @@
         5376,
         -1712
       ],
-      "id": "7cf0e554-d2c9-4816-8482-bf067380b898",
+      "id": "cfdb64f7-5901-4eb7-8e12-18790b5c43cf",
       "name": "API - IA QUALIFICACAO - ADV1",
       "credentials": {
         "googlePalmApi": {
@@ -966,7 +966,7 @@
         5488,
         -1712
       ],
-      "id": "6966be6d-b44a-4349-9f12-8ee0e1f60878",
+      "id": "98029fed-6c7e-485e-892d-fcdb601d4eaf",
       "name": "Postgres Chat Memory1",
       "credentials": {
         "postgres": {
@@ -983,7 +983,7 @@
         5920,
         -1936
       ],
-      "id": "d1a49481-f7a5-4f29-82d4-3e8cbb3d4a59",
+      "id": "f9f7b42f-dd34-43aa-b628-ac99e8480062",
       "name": "No Operation, do nothing2"
     },
     {
@@ -1017,7 +1017,7 @@
         2720,
         -1392
       ],
-      "id": "7106f203-d9ad-409e-b59e-2fd6fb20d2ec",
+      "id": "a1a7d347-fef3-4aa2-95f8-ddec76f2a819",
       "name": "If3"
     },
     {
@@ -1028,7 +1028,7 @@
         2688,
         -1136
       ],
-      "id": "2197d7ed-5bea-4411-a3c5-248dbc53cb03",
+      "id": "eda0ba09-57a5-4d87-a1a3-442d50ca65b5",
       "name": "No Operation, do nothing3"
     },
     {
@@ -1043,7 +1043,7 @@
         2512,
         -1392
       ],
-      "id": "82918c19-0ac2-478c-b57f-db21188952fe",
+      "id": "2808cc0c-8829-471d-9852-a2de8bcd2e94",
       "name": "Lock Atômico",
       "credentials": {
         "redis": {
@@ -1064,7 +1064,7 @@
         4192,
         -1392
       ],
-      "id": "d9d437d5-b973-469b-9adf-53012426e8de",
+      "id": "a11a48cd-bf84-4d8d-9923-4574875ccb20",
       "name": "Redis1",
       "credentials": {
         "redis": {
@@ -1084,7 +1084,7 @@
         -2336,
         -2960
       ],
-      "id": "6a6cfcca-8526-43c6-8db5-2980423d2f06",
+      "id": "4c0ed455-b98a-4f6c-bab8-6a9daaabe2df",
       "name": "APAGAR MEMÓRIA2",
       "credentials": {
         "redis": {
@@ -1105,7 +1105,7 @@
         -832,
         -1376
       ],
-      "id": "6df4d17b-f3f4-4dc7-90ac-43713c643214",
+      "id": "33f8f3ec-b035-427f-8e66-23cb3c2b1e9f",
       "name": "BuscarUsuário",
       "alwaysOutputData": true,
       "credentials": {
@@ -1128,7 +1128,7 @@
         -288,
         -1248
       ],
-      "id": "f554b281-5ad1-4da4-90f3-1408dc826ae4",
+      "id": "bea5a22e-de24-4fd3-bfee-b1aa6523b4b6",
       "name": "CriarUsuario",
       "credentials": {
         "postgres": {
@@ -1149,7 +1149,7 @@
         -2272,
         -1360
       ],
-      "id": "2d2b6838-b71d-45f0-b633-1a5fb25a3ec3",
+      "id": "6c7b6a79-f7aa-4e4d-a8a1-db72c7f8c8d4",
       "name": "BUSCAR CLIENTE",
       "credentials": {
         "postgres": {
@@ -1170,7 +1170,7 @@
         5712,
         -1936
       ],
-      "id": "3fc539ae-bb33-4f59-97b1-6be492ddf36e",
+      "id": "f02f5658-7824-400d-8b10-6a9f37a18432",
       "name": "SALVAR RESUMO",
       "credentials": {
         "postgres": {
@@ -1189,7 +1189,7 @@
         -1984,
         -1360
       ],
-      "id": "269feb20-17eb-4dfa-81c0-960c83b8e348",
+      "id": "78551f59-8a53-43af-9d4a-e4689562f8e2",
       "name": "MONTAR PROMPT"
     },
     {
@@ -1204,7 +1204,7 @@
         -1616
       ],
       "typeVersion": 1,
-      "id": "0faa41a1-d9e7-449e-a4da-d1be7a775b83",
+      "id": "671906f9-266b-421f-a64a-08e363e7b245",
       "name": "Sticky Note"
     },
     {
@@ -1231,7 +1231,7 @@
         5008,
         -1296
       ],
-      "id": "2ebd72c6-fd0b-4d77-9e87-a126a6424b27",
+      "id": "56ede25f-ea3f-4f88-b33c-ff7f1fc84237",
       "name": "Enviar Texto"
     },
     {
@@ -1258,7 +1258,7 @@
         3328,
         -1568
       ],
-      "id": "90a26c09-96a7-45d0-9ccc-74220b9070c4",
+      "id": "c87cfd46-d49b-4320-a9c4-601752a90a1f",
       "name": "ÁUDIO BOAS VINDAS"
     },
     {
@@ -1278,7 +1278,7 @@
         400,
         -1312
       ],
-      "id": "a65eae4d-466a-4a9b-9cf5-accd925cac5f",
+      "id": "e29e13b8-e51b-47c6-832c-61eae3fb87bd",
       "name": "TRANSFORMA URL EM BASE"
     },
     {
@@ -1298,29 +1298,8 @@
         400,
         -1088
       ],
-      "id": "1c09b20e-dd99-4a4b-b2a1-b251556eee45",
+      "id": "fbdf43b5-2105-45a5-8607-e0bf25b042ae",
       "name": "TRANSFORMA URL EM BASE2"
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "  INSERT INTO chat_memory (session_id, message)\n  VALUES (\n    '{{ $(\"DADOS LEAD\").item.json.telefone }}',\n    json_build_object(\n      'type', 'human',\n      'content', '{{ $(\"DADOS LEAD\").item.json.mensagem }}'\n    )::jsonb\n  )",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.6,
-      "position": [
-        -1520,
-        -1360
-      ],
-      "id": "96b59f7a-891d-4bad-95c3-3d43d8426b97",
-      "name": "Chat WhatsApp",
-      "credentials": {
-        "postgres": {
-          "id": "toWNygO6lUq2z27A",
-          "name": "Postgres José"
-        }
-      }
     }
   ],
   "pinData": {
@@ -1480,7 +1459,7 @@
       "main": [
         [
           {
-            "node": "Chat WhatsApp",
+            "node": "Tem Conversa em Aberto?",
             "type": "main",
             "index": 0
           }
@@ -2029,17 +2008,6 @@
           }
         ]
       ]
-    },
-    "Chat WhatsApp": {
-      "main": [
-        [
-          {
-            "node": "Tem Conversa em Aberto?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
     }
   },
   "active": true,
@@ -2052,11 +2020,11 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "02866875-68ca-4664-96ab-2e15ff611b78",
+  "versionId": "c415e666-4a95-4bfb-a668-d808a7553bba",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "804c00b1e5188d906bae124422d170cfebea2fae250a07ce077882d6fad45087"
   },
-  "id": "9Pkht5y46OzaGJc9",
+  "id": "xpq86Ecptbh2wfMh",
   "tags": []
 }

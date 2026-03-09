@@ -27,8 +27,23 @@ export async function middleware(request) {
     }
   )
 
-  // Refresh session if expired
-  await supabase.auth.getUser()
+  // Refresh session
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const { pathname } = request.nextUrl
+
+  // Rotas protegidas — redireciona para /login se não autenticado
+  const protectedPaths = ['/leads', '/chat', '/configuracoes', '/admin']
+  const isProtected = protectedPaths.some(p => pathname.startsWith(p))
+
+  if (isProtected && !user) {
+    return NextResponse.redirect(new URL('/login', request.url))
+  }
+
+  // Usuário logado tentando acessar /login → redireciona para /
+  if (pathname === '/login' && user) {
+    return NextResponse.redirect(new URL('/', request.url))
+  }
 
   return response
 }

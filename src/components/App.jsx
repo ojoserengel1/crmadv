@@ -8,7 +8,7 @@ const supabase = createClient()
 // ============================================================
 // THEME
 // ============================================================
-const co = {
+export const co = {
   bg: "#0C0C0C", bgCard: "#161616", bgHover: "#1E1E1E", bgInput: "#131313",
   border: "#2A2A2A", borderFocus: "#EE5221",
   text: "#E8E8ED", textMuted: "#8888A0", textDim: "#55556A",
@@ -75,7 +75,7 @@ function Loading() {
 // ============================================================
 // LOGIN
 // ============================================================
-function LoginPage({ onLogin }) {
+export function LoginPage({ onLogin }) {
   const [email, setEmail] = useState("")
   const [senha, setSenha] = useState("")
   const [error, setError] = useState("")
@@ -128,9 +128,32 @@ function LoginPage({ onLogin }) {
 // ============================================================
 // SIDEBAR
 // ============================================================
-function Sidebar({ user, activeTab, onTabChange, onLogout }) {
+export function Sidebar({ user, activeTab, onTabChange, onLogout, onConfigNav }) {
   const [collapsed, setCollapsed] = useState(false)
+  const [wppStatuses, setWppStatuses] = useState([]) // [{ id, nome, connected: null|true|false }]
   const isAdmin = user.role === "admin"
+
+  useEffect(() => {
+    if (isAdmin || !user.cliente_id) return
+    const check = async () => {
+      const { data: ags } = await supabase.from('agentes').select('id, nome, instancia_wpp').eq('cliente_id', user.cliente_id).order('created_at')
+      if (!ags?.length) return
+      // Inicializa com null (verificando)
+      setWppStatuses(ags.map(a => ({ id: a.id, nome: a.nome, instancia_wpp: a.instancia_wpp, connected: null })))
+      // Busca status de cada agente em paralelo
+      await Promise.all(ags.map(async (ag) => {
+        try {
+          const r = await fetch(`/api/whatsapp/status?agenteId=${ag.id}`)
+          const d = await r.json()
+          const connected = d.noInstance ? 'none' : d.connected === true
+          setWppStatuses(prev => prev.map(s => s.id === ag.id ? { ...s, connected } : s))
+        } catch {
+          setWppStatuses(prev => prev.map(s => s.id === ag.id ? { ...s, connected: false } : s))
+        }
+      }))
+    }
+    check()
+  }, [user.cliente_id])
   const tabs = isAdmin
     ? [{ id: "clientes", label: "Clientes", icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> }]
     : [
@@ -181,6 +204,28 @@ function Sidebar({ user, activeTab, onTabChange, onLogout }) {
 
       {/* FOOTER */}
       <div style={{ borderTop: `1px solid ${co.border}`, paddingTop: 16 }}>
+
+        {/* STATUS WHATSAPP — um card por agente, só para cliente */}
+        {!isAdmin && wppStatuses.map(ag => {
+          const isConn = ag.connected === true
+          const isDisc = ag.connected === false
+          const dotColor = isConn ? '#22C55E' : isDisc ? '#EF4444' : '#6B7280'
+          const statusLabel = isConn ? 'Conectado' : isDisc ? 'Desconectado' : ag.connected === 'none' ? 'Não configurado' : 'Verificando...'
+          return collapsed ? (
+            <div key={ag.id} title={`${ag.nome}: ${statusLabel}`} onClick={() => onConfigNav?.(ag.id)} style={{ display: "flex", justifyContent: "center", marginBottom: 8, cursor: "pointer" }}>
+              <div style={{ width: 8, height: 8, borderRadius: "50%", background: dotColor, boxShadow: isConn ? `0 0 6px ${dotColor}` : 'none' }} />
+            </div>
+          ) : (
+            <div key={ag.id} onClick={() => onConfigNav?.(ag.id)} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", marginBottom: 6, borderRadius: 8, background: co.bgHover, border: `1px solid ${co.border}`, cursor: "pointer" }}>
+              <div style={{ width: 7, height: 7, borderRadius: "50%", background: dotColor, flexShrink: 0, boxShadow: isConn ? `0 0 5px ${dotColor}` : 'none' }} />
+              <div style={{ overflow: "hidden", minWidth: 0 }}>
+                <div style={{ color: co.textDim, fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{ag.nome}</div>
+                <div style={{ color: isConn ? '#22C55E' : isDisc ? '#EF4444' : co.textDim, fontSize: 11, fontWeight: 500, whiteSpace: "nowrap" }}>{statusLabel}</div>
+              </div>
+            </div>
+          )
+        })}
+
         {!collapsed && (
           <div style={{ padding: "0 8px", marginBottom: 12, overflow: "hidden" }}>
             <div style={{ color: co.text, fontSize: 13, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{user.nome}</div>
@@ -201,7 +246,7 @@ function Sidebar({ user, activeTab, onTabChange, onLogout }) {
 // ============================================================
 // KANBAN (Cliente)
 // ============================================================
-function KanbanView({ clienteId }) {
+export function KanbanView({ clienteId }) {
   const [agentes, setAgentes] = useState([])
   const [etapas, setEtapas] = useState([])
   const [leads, setLeads] = useState([])
@@ -646,7 +691,7 @@ function KanbanView({ clienteId }) {
 // ============================================================
 // CONFIG (Cliente)
 // ============================================================
-function ConfigView({ clienteId }) {
+export function ConfigView({ clienteId, initAgenteId, initSection }) {
   const [agentes, setAgentes] = useState([])
   const [activeAgente, setActiveAgente] = useState(null)
   const [agenteConfigs, setAgenteConfigs] = useState({})
@@ -669,7 +714,10 @@ function ConfigView({ clienteId }) {
       .then(({ data }) => {
         if (data?.length) {
           setAgentes(data)
-          setActiveAgente(data[0].id)
+          const preselect = initAgenteId && data.find(a => a.id === initAgenteId)
+          setActiveAgente(preselect ? initAgenteId : data[0].id)
+          if (initSection) setActiveSection(initSection)
+          else if (preselect) setActiveSection('whatsapp')
           setAgenteConfigs(Object.fromEntries(data.map(a => [a.id, { ...a }])))
         }
       })
@@ -1319,8 +1367,15 @@ function LeadDrawer({ lead, onClose, onEdit, onDelete }) {
             const bubbleBg = type === 'agent' ? co.success : type === 'ai' ? co.primary : co.bgCard
             const bubbleColor = isRight ? '#fff' : co.text
             const bubbleRadius = isRight ? '16px 16px 4px 16px' : '16px 16px 16px 4px'
+            const ts = msg.timestamp ? (() => {
+              const d = new Date(msg.timestamp)
+              const now = new Date()
+              const isToday = d.toDateString() === now.toDateString()
+              const hm = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+              return isToday ? hm : `${d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}, ${hm}`
+            })() : null
             return (
-              <div key={msg.id} style={{ display: 'flex', justifyContent: isRight ? 'flex-end' : 'flex-start' }}>
+              <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isRight ? 'flex-end' : 'flex-start' }}>
                 <div style={{ maxWidth: '72%', padding: '10px 14px', borderRadius: bubbleRadius, background: bubbleBg, border: isRight ? 'none' : `1px solid ${co.border}`, color: bubbleColor, fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                   {(mediaType === 'ptt' || mediaType === 'audio') ? (
                     <PttPlayer
@@ -1354,6 +1409,7 @@ function LeadDrawer({ lead, onClose, onEdit, onDelete }) {
                     </a>
                   ) : content}
                 </div>
+                {ts && <span style={{ fontSize: 10, color: co.textDim, marginTop: 3, paddingLeft: isRight ? 0 : 4, paddingRight: isRight ? 4 : 0 }}>{ts}</span>}
               </div>
             )
           })}
@@ -1407,7 +1463,7 @@ function LeadDrawer({ lead, onClose, onEdit, onDelete }) {
 // ============================================================
 // CHAT (Cliente)
 // ============================================================
-function ChatView({ clienteId }) {
+export function ChatView({ clienteId }) {
   const [conversations, setConversations] = useState([])
   const [leads, setLeads] = useState([])
   const [selectedSession, setSelectedSession] = useState(null)
@@ -1701,8 +1757,15 @@ function ChatView({ clienteId }) {
               const bubbleBg = type === 'agent' ? co.success : type === 'ai' ? co.primary : co.bgCard
               const bubbleColor = isRight ? '#fff' : co.text
               const bubbleRadius = isRight ? '16px 16px 4px 16px' : '16px 16px 16px 4px'
+              const ts = msg.timestamp ? (() => {
+                const d = new Date(msg.timestamp)
+                const now = new Date()
+                const isToday = d.toDateString() === now.toDateString()
+                const hm = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+                return isToday ? hm : `${d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}, ${hm}`
+              })() : null
               return (
-                <div key={msg.id} style={{ display: 'flex', justifyContent: isRight ? 'flex-end' : 'flex-start' }}>
+                <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isRight ? 'flex-end' : 'flex-start' }}>
                   <div style={{ maxWidth: '68%', padding: '10px 14px', borderRadius: bubbleRadius, background: bubbleBg, border: isRight ? 'none' : `1px solid ${co.border}`, color: bubbleColor, fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                     {(mediaType === 'ptt' || mediaType === 'audio') ? (
                       <PttPlayer
@@ -1736,6 +1799,7 @@ function ChatView({ clienteId }) {
                       </a>
                     ) : content}
                   </div>
+                  {ts && <span style={{ fontSize: 10, color: co.textDim, marginTop: 3, paddingLeft: isRight ? 0 : 4, paddingRight: isRight ? 4 : 0 }}>{ts}</span>}
                 </div>
               )
             })}
@@ -1804,7 +1868,7 @@ function ChatView({ clienteId }) {
   )
 }
 
-function AdminClientesView({ onSelectCliente }) {
+export function AdminClientesView({ onSelectCliente }) {
   const [clientes, setClientes] = useState([])
   const [filtro, setFiltro] = useState('todos')
   const [loading, setLoading] = useState(true)
@@ -1816,16 +1880,20 @@ function AdminClientesView({ onSelectCliente }) {
   const [editingCliente, setEditingCliente] = useState(null)
   const [savingCliente, setSavingCliente] = useState(false)
   const [erroEdit, setErroEdit] = useState('')
+  const [expandedCliente, setExpandedCliente] = useState(null)
+  const [confirm, setConfirm] = useState(null) // { type: 'ia'|'cliente', id, nome, profile_id? }
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     const onKey = (e) => {
       if (e.key !== 'Escape') return
+      if (confirm) { setConfirm(null); return }
       if (editingCliente) { setEditingCliente(null); return }
       if (showNovoCliente) { setShowNovoCliente(false); return }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [editingCliente, showNovoCliente])
+  }, [confirm, editingCliente, showNovoCliente])
 
   const fetchClientes = async () => {
     const { data } = await supabase.from('clientes').select('*, agentes(id, nome, ativo, ia_ativa)')
@@ -1853,6 +1921,22 @@ function AdminClientesView({ onSelectCliente }) {
     await fetchClientes()
     setEditingCliente(null)
     setSavingCliente(false)
+  }
+
+  const handleDelete = async () => {
+    setDeleting(true)
+    try {
+      if (confirm.type === 'ia') {
+        await fetch('/api/admin/excluir-ia', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ agenteId: confirm.id }) })
+      } else {
+        await fetch('/api/admin/excluir-cliente', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clienteId: confirm.id, profileId: confirm.profile_id }) })
+        setExpandedCliente(null)
+      }
+      await fetchClientes()
+    } finally {
+      setConfirm(null)
+      setDeleting(false)
+    }
   }
 
   useEffect(() => { fetchClientes() }, [])
@@ -1905,27 +1989,81 @@ function AdminClientesView({ onSelectCliente }) {
         }).map(cl => {
           const ags = cl.agentes || []
           const clienteAtivo = ags.some(a => a.ativo)
+          const isExpanded = expandedCliente === cl.id
           return (
-            <div key={cl.id} onClick={() => onSelectCliente(cl)} style={{ background: co.bgCard, borderRadius: 12, border: `1px solid ${co.border}`, padding: 20, cursor: "pointer", transition: "all 0.15s" }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = co.borderFocus }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = co.border }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
-                <div>
-                  <h3 style={{ color: co.text, fontSize: 15, fontWeight: 600, margin: "0 0 4px" }}>{cl.nome_cliente}</h3>
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <Badge color={clienteAtivo ? "success" : "danger"}>{clienteAtivo ? "Ativo" : "Desativado"}</Badge>
-                    {ags.map(a => <Badge key={a.id} color={!a.ativo ? "danger" : a.ia_ativa ? "purple" : "warning"}>{a.nome} {!a.ativo ? "DESATIVADO" : a.ia_ativa ? "ON" : "OFF"}</Badge>)}
+            <div key={cl.id} style={{ background: co.bgCard, borderRadius: 12, border: `1px solid ${isExpanded ? co.borderFocus : co.border}`, transition: "all 0.15s", overflow: "hidden" }}>
+              {/* Cabeçalho clicável */}
+              <div onClick={() => setExpandedCliente(isExpanded ? null : cl.id)} style={{ padding: 20, cursor: "pointer" }}
+                onMouseEnter={e => { if (!isExpanded) e.currentTarget.parentElement.style.borderColor = co.borderFocus }}
+                onMouseLeave={e => { if (!isExpanded) e.currentTarget.parentElement.style.borderColor = co.border }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
+                  <div>
+                    <h3 style={{ color: co.text, fontSize: 15, fontWeight: 600, margin: "0 0 4px" }}>{cl.nome_cliente}</h3>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <Badge color={clienteAtivo ? "success" : "danger"}>{clienteAtivo ? "Ativo" : "Desativado"}</Badge>
+                      {ags.map(a => <Badge key={a.id} color={!a.ativo ? "danger" : a.ia_ativa ? "purple" : "warning"}>{a.nome} {!a.ativo ? "DESATIVADO" : a.ia_ativa ? "ON" : "OFF"}</Badge>)}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+                    <span style={{ color: co.textDim, fontSize: 13, transition: "transform 0.2s", display: "inline-block", transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)" }}>▶</span>
+                    <button onClick={e => { e.stopPropagation(); onSelectCliente(cl) }} title="Abrir editor"
+                      style={{ width: 30, height: 30, borderRadius: 8, background: co.bgHover, border: `1px solid ${co.border}`, color: co.textMuted, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>→</button>
                   </div>
                 </div>
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <Btn size="sm" variant="ghost" onClick={e => { e.stopPropagation(); openEditCliente(cl) }}>✎ Editar</Btn>
-                  <span style={{ color: co.textDim, fontSize: 18 }}>→</span>
-                </div>
               </div>
+
+              {/* Seção expandida */}
+              {isExpanded && (
+                <div style={{ borderTop: `1px solid ${co.border}`, padding: "16px 20px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                    <Btn size="sm" variant="ghost" onClick={() => openEditCliente(cl)}>✎ Editar Cliente</Btn>
+                    <Btn size="sm" variant="danger" onClick={() => setConfirm({ type: 'cliente', id: cl.id, nome: cl.nome_cliente, profile_id: cl.profile_id })}>🗑 Excluir Cliente</Btn>
+                  </div>
+                  {ags.length > 0 && (
+                    <div style={{ borderTop: `1px solid ${co.border}`, paddingTop: 12 }}>
+                      <p style={{ color: co.textDim, fontSize: 11, fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase", margin: "0 0 8px" }}>IAs / Agentes</p>
+                      {ags.map((ag, i) => (
+                        <div key={ag.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: i < ags.length - 1 ? `1px solid ${co.border}` : "none" }}>
+                          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                            <span style={{ color: co.text, fontSize: 13, fontWeight: 500 }}>{ag.nome}</span>
+                            <Badge color={ag.ia_ativa ? "success" : "warning"}>{ag.ia_ativa ? "ON" : "OFF"}</Badge>
+                          </div>
+                          <Btn size="sm" variant="danger" onClick={() => setConfirm({ type: 'ia', id: ag.id, nome: ag.nome })}>🗑 Excluir IA</Btn>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )
         })}
       </div>
+
+      {confirm && (
+        <div onClick={() => !deleting && setConfirm(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: 420, background: co.bgCard, borderRadius: 16, border: `1px solid ${co.danger}`, padding: 28, boxShadow: "0 25px 60px rgba(0,0,0,0.6)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: co.dangerBg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>⚠️</div>
+              <h3 style={{ color: co.danger, fontSize: 17, fontWeight: 700, margin: 0 }}>Confirmar Exclusão</h3>
+            </div>
+            <p style={{ color: co.text, fontSize: 14, margin: "0 0 8px", lineHeight: 1.5 }}>
+              {confirm.type === 'ia'
+                ? <>Tem certeza que deseja excluir a IA <strong>"{confirm.nome}"</strong>?</>
+                : <>Tem certeza que deseja excluir o cliente <strong>"{confirm.nome}"</strong>?</>}
+            </p>
+            <p style={{ color: co.textMuted, fontSize: 12, margin: "0 0 20px", padding: "10px 12px", background: co.dangerBg, borderRadius: 8, lineHeight: 1.5 }}>
+              {confirm.type === 'ia'
+                ? 'Todos os leads, conversas e configurações desta IA serão excluídos permanentemente. Esta ação não pode ser desfeita.'
+                : 'TODOS os dados do cliente serão excluídos permanentemente: agentes, leads, conversas e o acesso ao sistema. Esta ação não pode ser desfeita.'}
+            </p>
+            <div style={{ display: "flex", gap: 10 }}>
+              <Btn variant="ghost" size="md" onClick={() => setConfirm(null)} disabled={deleting} style={{ flex: 1 }}>Cancelar</Btn>
+              <Btn variant="danger" size="md" onClick={handleDelete} disabled={deleting} style={{ flex: 1 }}>{deleting ? "Excluindo..." : "Sim, excluir"}</Btn>
+            </div>
+          </div>
+        </div>
+      )}
 
       {editingCliente && (
         <div onClick={() => setEditingCliente(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
@@ -1971,7 +2109,7 @@ function AdminClientesView({ onSelectCliente }) {
 // ============================================================
 // ADMIN — EDITOR DE CLIENTE
 // ============================================================
-function AdminEditorView({ cliente: initialCliente }) {
+export function AdminEditorView({ cliente: initialCliente }) {
   const [agentes, setAgentes] = useState([])
   const [activeAgente, setActiveAgente] = useState(null)
   const [agenteConfigs, setAgenteConfigs] = useState({})
@@ -2013,7 +2151,6 @@ function AdminEditorView({ cliente: initialCliente }) {
       webhook_path: cfg.webhook_path,
       ativo: cfg.ativo,
       ia_ativa: cfg.ia_ativa,
-      url_planilha: cfg.url_planilha,
       url_audio: cfg.url_audio,
       frase_gatilho: cfg.frase_gatilho,
       prompt_agente: cfg.prompt_agente,
@@ -2101,7 +2238,6 @@ function AdminEditorView({ cliente: initialCliente }) {
 
             <div style={{ height: 1, background: co.border, margin: "20px 0" }} />
 
-            <Input label="URL DA PLANILHA (Google Sheets)" value={agente.url_planilha || ""} onChange={v => updateAgente("url_planilha", v)} />
             <Input label="URL DO ÁUDIO (Boas-vindas)" value={agente.url_audio || ""} onChange={v => updateAgente("url_audio", v)} />
             <Input label="FRASE GATILHO" value={agente.frase_gatilho || ""} onChange={v => updateAgente("frase_gatilho", v)} />
 
@@ -2144,6 +2280,7 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true)
   const [activeTab, setActiveTab] = useState(null)
   const [selectedCliente, setSelectedCliente] = useState(null)
+  const [configInitAgenteId, setConfigInitAgenteId] = useState(null)
 
   const loadUser = async (authUser) => {
     const { data: profile } = await supabase
@@ -2224,14 +2361,14 @@ export default function App() {
     } else {
       if (activeTab === 'kanban') return <KanbanView clienteId={clienteId} />
       if (activeTab === 'chat') return <ChatView clienteId={clienteId} />
-      if (activeTab === 'config') return <ConfigView clienteId={clienteId} />
+      if (activeTab === 'config') return <ConfigView clienteId={clienteId} initAgenteId={configInitAgenteId} />
     }
     return null
   }
 
   return (
     <div style={{ display: "flex", height: "100vh", background: co.bg, fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", color: co.text }}>
-      <Sidebar user={user} activeTab={activeTab} onTabChange={setActiveTab} onLogout={handleLogout} />
+      <Sidebar user={user} activeTab={activeTab} onTabChange={(tab) => { if (tab !== 'config') setConfigInitAgenteId(null); setActiveTab(tab) }} onLogout={handleLogout} onConfigNav={(agenteId) => { setConfigInitAgenteId(agenteId); setActiveTab('config') }} />
       <div style={{ flex: 1, overflow: "hidden" }}>{renderContent()}</div>
     </div>
   )
