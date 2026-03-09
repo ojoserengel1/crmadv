@@ -2489,7 +2489,7 @@ export function AnalyticsView({ clienteId }) {
 
   // Métricas
   const total = leads.length
-  const qualificados = leads.filter(l => l.status?.toLowerCase().includes('qualif')).length
+  const qualificados = leads.filter(l => l.status?.toLowerCase()?.includes('qualif')).length
   const taxa = total > 0 ? Math.round((qualificados / total) * 100) : 0
 
   // Gerar todos os dias do range
@@ -2507,7 +2507,7 @@ export function AnalyticsView({ clienteId }) {
     if (!day) return
     if (!byDay[day]) byDay[day] = { total: 0, qual: 0 }
     byDay[day].total++
-    if (l.status?.toLowerCase().includes('qualif')) byDay[day].qual++
+    if (l.status?.toLowerCase()?.includes('qualif')) byDay[day].qual++
   })
 
   const chartData = days.map(d => {
