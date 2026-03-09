@@ -707,6 +707,9 @@ export function ConfigView({ clienteId, initAgenteId, initSection }) {
   const [wppDisconnecting, setWppDisconnecting] = useState(false)
   const [wppRealConnected, setWppRealConnected] = useState(null) // null=checking | true | false
   const wppPollRef = useRef(null)
+  const audioInputRef = useRef(null)
+  const [uploadingAudio, setUploadingAudio] = useState(false)
+  const [uploadAudioErr, setUploadAudioErr] = useState('')
 
   useEffect(() => {
     if (!clienteId) return
@@ -751,6 +754,26 @@ export function ConfigView({ clienteId, initAgenteId, initSection }) {
     setSaving(false)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
+  }
+
+  const handleAudioUpload = async (file) => {
+    if (!file || !activeAgente) return
+    if (!file.type.startsWith('audio/')) { setUploadAudioErr('Formato não suportado. Use MP3, OGG, M4A, AAC ou WAV.'); return }
+    setUploadingAudio(true)
+    setUploadAudioErr('')
+    const ext = file.name.split('.').pop().toLowerCase() || 'mp3'
+    const fileName = `welcome/agente_${activeAgente}.${ext}`
+    const { error } = await supabase.storage.from('chat-media').upload(fileName, file, { contentType: file.type, upsert: true })
+    if (error) { setUploadAudioErr('Erro no upload: ' + error.message); setUploadingAudio(false); return }
+    const { data: pub } = supabase.storage.from('chat-media').getPublicUrl(fileName)
+    await supabase.from('agentes').update({ url_audio: pub.publicUrl }).eq('id', activeAgente)
+    updateAgente('url_audio', pub.publicUrl)
+    setUploadingAudio(false)
+  }
+
+  const handleRemoveAudio = async () => {
+    await supabase.from('agentes').update({ url_audio: null }).eq('id', activeAgente)
+    updateAgente('url_audio', '')
   }
 
   // Quando muda de agente, resetar e verificar status real com UazAPI
@@ -973,6 +996,27 @@ export function ConfigView({ clienteId, initAgenteId, initSection }) {
             <h3 style={{ color: co.text, fontSize: 15, fontWeight: 600, margin: "0 0 20px" }}>Mensagem de Saudação</h3>
             <p style={{ color: co.textMuted, fontSize: 12, margin: "0 0 14px" }}>Primeira mensagem enviada ao lead</p>
             <Input label="FRASE DE SAUDAÇÃO" value={agente.frase_saudacao || ""} onChange={v => updateAgente("frase_saudacao", v)} textarea placeholder="Ex: Tudo bem? Sou o Dr. José..." />
+          </div>
+
+          <div style={{ background: co.bgCard, borderRadius: 12, border: `1px solid ${co.border}`, padding: 24, marginBottom: 20 }}>
+            <h3 style={{ color: co.text, fontSize: 15, fontWeight: 600, margin: "0 0 6px" }}>Áudio de Boas-vindas</h3>
+            <p style={{ color: co.textMuted, fontSize: 12, margin: "0 0 4px", lineHeight: 1.5 }}>Áudio enviado automaticamente ao lead junto com a saudação de texto.</p>
+            <p style={{ color: co.textDim, fontSize: 11, margin: "0 0 16px", padding: "8px 12px", background: co.bg, borderRadius: 6, border: `1px solid ${co.border}` }}>
+              Formatos aceitos: <strong style={{ color: co.textMuted }}>MP3, OGG, M4A, AAC, WAV</strong> — compatíveis com envio de áudio no WhatsApp
+            </p>
+            {agente.url_audio && (
+              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: co.bg, borderRadius: 8, border: `1px solid ${co.border}`, marginBottom: 14 }}>
+                <audio controls src={agente.url_audio} style={{ flex: 1, height: 32, minWidth: 0 }} />
+                <button onClick={handleRemoveAudio} title="Remover áudio"
+                  style={{ flexShrink: 0, width: 28, height: 28, borderRadius: 6, background: co.dangerBg, border: `1px solid ${co.danger}`, color: co.danger, cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+              </div>
+            )}
+            <input ref={audioInputRef} type="file" accept="audio/*" style={{ display: "none" }}
+              onChange={e => { if (e.target.files[0]) { handleAudioUpload(e.target.files[0]); e.target.value = "" } }} />
+            {uploadAudioErr && <p style={{ color: co.danger, fontSize: 12, margin: "0 0 12px", padding: "8px 12px", background: co.dangerBg, borderRadius: 6 }}>{uploadAudioErr}</p>}
+            <Btn variant="ghost" size="sm" onClick={() => audioInputRef.current?.click()} disabled={uploadingAudio}>
+              {uploadingAudio ? "⏳ Enviando..." : agente.url_audio ? "↻ Substituir áudio" : "↑ Enviar áudio"}
+            </Btn>
           </div>
 
           <div style={{ background: co.bgCard, borderRadius: 12, border: `1px solid ${co.border}`, padding: 24, marginBottom: 20 }}>
@@ -2238,7 +2282,24 @@ export function AdminEditorView({ cliente: initialCliente }) {
 
             <div style={{ height: 1, background: co.border, margin: "20px 0" }} />
 
-            <Input label="URL DO ÁUDIO (Boas-vindas)" value={agente.url_audio || ""} onChange={v => updateAgente("url_audio", v)} />
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: "block", fontSize: 12, color: co.textMuted, marginBottom: 6, fontWeight: 500, letterSpacing: "0.03em" }}>URL DO ÁUDIO (Boas-vindas)</label>
+              {agente.url_audio ? (
+                <div style={{ background: co.bgInput, border: `1px solid ${co.border}`, borderRadius: 8, overflow: "hidden" }}>
+                  <div style={{ padding: "8px 12px", display: "flex", alignItems: "center", gap: 10, borderBottom: `1px solid ${co.border}` }}>
+                    <audio controls src={agente.url_audio} style={{ flex: 1, height: 32, minWidth: 0 }} />
+                  </div>
+                  <div style={{ padding: "6px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                    <span style={{ fontSize: 10, color: co.textDim, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{agente.url_audio}</span>
+                    <button onClick={() => navigator.clipboard.writeText(agente.url_audio)} style={{ fontSize: 10, color: co.textMuted, background: co.bgCard, border: `1px solid ${co.border}`, borderRadius: 4, padding: "3px 8px", cursor: "pointer", flexShrink: 0, fontFamily: "inherit" }}>Copiar</button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ padding: "9px 14px", background: co.bg, border: `1px solid ${co.border}`, borderRadius: 8, color: co.textDim, fontSize: 13 }}>
+                  Nenhum áudio — o cliente faz upload em <strong style={{ color: co.textMuted }}>Configurações → Qualificação</strong>
+                </div>
+              )}
+            </div>
             <Input label="FRASE GATILHO" value={agente.frase_gatilho || ""} onChange={v => updateAgente("frase_gatilho", v)} />
 
             <div style={{ height: 1, background: co.border, margin: "20px 0" }} />

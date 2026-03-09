@@ -19,7 +19,7 @@ export async function POST(req) {
     // Busca token do agente
     const { data: agente, error: agenteErr } = await supabaseAdmin
       .from('agentes')
-      .select('uazapi_token')
+      .select('uazapi_token, cliente_id')
       .eq('id', agenteId)
       .single()
 
@@ -83,6 +83,7 @@ export async function POST(req) {
       content: tipo === 'text' ? conteudo : `[${tipo}] ${conteudo}`,
       media_url: tipo !== 'text' ? conteudo : null,
       media_type: tipo !== 'text' ? tipo : null,
+      cliente_id: agente.cliente_id || null,
       message_id: messageId, // null se UazAPI não retornar — webhook fromMe=true será ignorado pelo ON CONFLICT
     })
 

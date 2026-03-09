@@ -209,14 +209,15 @@ export async function POST(req) {
       return NextResponse.json({ ok: true })
     }
 
-    // Busca agente pela instância — pega também webhook_path para relay N8N
+    // Busca agente pela instância — pega também webhook_path e cliente_id
     const { data: agente } = await supabaseAdmin
       .from('agentes')
-      .select('id, webhook_path')
+      .select('id, cliente_id, webhook_path')
       .eq('instancia_wpp', instanceName)
       .single()
 
     const agenteId = agente?.id || null
+    const clienteId = agente?.cliente_id || null
 
     // fromMe=true: pode ser IA (N8N) ou operador (CRM)
     // Se enviado via CRM, já foi salvo pelo /api/chat/enviar como 'agent'
@@ -253,6 +254,7 @@ export async function POST(req) {
       const { error: upsertErr } = await supabaseAdmin.from('chat_messages').upsert(
         {
           agente_id: agenteId,
+          cliente_id: clienteId,
           session_id: telefone,
           type,
           content: contentToSave,
@@ -267,6 +269,7 @@ export async function POST(req) {
     } else {
       const { error: insertErr } = await supabaseAdmin.from('chat_messages').insert({
         agente_id: agenteId,
+        cliente_id: clienteId,
         session_id: telefone,
         type,
         content: contentToSave,
@@ -285,7 +288,8 @@ export async function POST(req) {
         const n8nRes = await fetch(n8nUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
+          // Inclui agente_id e cliente_id no payload para o N8N usar como session key
+          body: JSON.stringify({ ...body, agente_id: agenteId, cliente_id: clienteId }),
         })
         console.log(`[webhook] relay N8N (${agente.webhook_path}) status:`, n8nRes.status)
       } catch (err) {
