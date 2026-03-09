@@ -2442,6 +2442,7 @@ export function AnalyticsView({ clienteId }) {
   const [customTo, setCustomTo] = useState('')
   const [leads, setLeads] = useState([])
   const [agentes, setAgentes] = useState([])
+  const [etapasMap, setEtapasMap] = useState({}) // { etapa_id: nome }
   const [agenteFilter, setAgenteFilter] = useState('all')
   const [loading, setLoading] = useState(false)
 
@@ -2469,7 +2470,18 @@ export function AnalyticsView({ clienteId }) {
   useEffect(() => {
     if (!clienteId) return
     supabase.from('agentes').select('id, nome').eq('cliente_id', clienteId)
-      .then(({ data }) => setAgentes(data || []))
+      .then(({ data }) => {
+        setAgentes(data || [])
+        // Busca etapas de todos os agentes para mapear etapa_id → nome
+        const ids = (data || []).map(a => a.id)
+        if (!ids.length) return
+        supabase.from('etapas_funil').select('id, nome').in('agente_id', ids)
+          .then(({ data: etapas }) => {
+            const m = {}
+            ;(etapas || []).forEach(e => { m[e.id] = e.nome })
+            setEtapasMap(m)
+          })
+      })
   }, [clienteId])
 
   useEffect(() => {
@@ -2478,7 +2490,7 @@ export function AnalyticsView({ clienteId }) {
     if (!range) return
     setLoading(true)
     let q = supabase.from('leads')
-      .select('id, created_at, status, agente_id, nome')
+      .select('id, created_at, etapa_id, agente_id, nome')
       .eq('cliente_id', clienteId)
       .gte('created_at', range.from.toISOString())
       .lte('created_at', range.to.toISOString())
@@ -2489,7 +2501,7 @@ export function AnalyticsView({ clienteId }) {
 
   // Métricas
   const total = leads.length
-  const qualificados = leads.filter(l => l.status?.toLowerCase()?.includes('qualif')).length
+  const qualificados = leads.filter(l => etapasMap[l.etapa_id] === 'Qualificado').length
   const taxa = total > 0 ? Math.round((qualificados / total) * 100) : 0
 
   // Gerar todos os dias do range
@@ -2507,7 +2519,7 @@ export function AnalyticsView({ clienteId }) {
     if (!day) return
     if (!byDay[day]) byDay[day] = { total: 0, qual: 0 }
     byDay[day].total++
-    if (l.status?.toLowerCase()?.includes('qualif')) byDay[day].qual++
+    if (etapasMap[l.etapa_id] === 'Qualificado') byDay[day].qual++
   })
 
   const chartData = days.map(d => {
@@ -2518,7 +2530,7 @@ export function AnalyticsView({ clienteId }) {
 
   // Distribuição por status
   const statusMap = {}
-  leads.forEach(l => { const s = l.status || 'Sem status'; statusMap[s] = (statusMap[s] || 0) + 1 })
+  leads.forEach(l => { const s = etapasMap[l.etapa_id] || 'Sem etapa'; statusMap[s] = (statusMap[s] || 0) + 1 })
   const statusList = Object.entries(statusMap).sort((a, b) => b[1] - a[1])
 
   const presetBtns = [
@@ -2606,8 +2618,8 @@ export function AnalyticsView({ clienteId }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {statusList.map(([status, count]) => {
               const pct = total > 0 ? Math.round((count / total) * 100) : 0
-              const barColor = status.toLowerCase().includes('qualif') ? co.success
-                : status.toLowerCase().includes('descar') ? co.danger : co.primary
+              const barColor = status === 'Qualificado' ? co.success
+                : status === 'Descartado' ? co.danger : co.primary
               return (
                 <div key={status}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
