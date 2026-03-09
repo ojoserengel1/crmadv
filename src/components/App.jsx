@@ -2409,20 +2409,18 @@ export function AdminEditorView({ cliente: initialCliente }) {
 // ANALYTICS VIEW
 // ============================================================
 
-function BarChart({ data, maxVal }) {
+function BarChart({ data, field, color, maxVal }) {
   const h = 160
   const showEvery = data.length <= 14 ? 1 : data.length <= 31 ? 2 : Math.ceil(data.length / 14)
   return (
     <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: h + 28, paddingBottom: 28, overflow: 'hidden' }}>
       {data.map((d, i) => {
-        const totalH = maxVal > 0 ? Math.round((d.total / maxVal) * h) : 0
-        const qualH = maxVal > 0 ? Math.round((d.qual / maxVal) * h) : 0
+        const barH = maxVal > 0 ? Math.round((d[field] / maxVal) * h) : 0
         return (
-          <div key={d.date} title={`${d.label}: ${d.total} recebidos, ${d.qual} qualificados`}
+          <div key={d.date} title={`${d.label}: ${d[field]}`}
             style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: h + 28, minWidth: 0 }}>
-            <div style={{ width: '100%', position: 'relative', height: totalH || 2, minHeight: 2 }}>
-              <div style={{ position: 'absolute', bottom: 0, left: '10%', right: '10%', height: totalH || 2, background: co.primary, opacity: 0.45, borderRadius: '3px 3px 0 0' }} />
-              <div style={{ position: 'absolute', bottom: 0, left: '10%', right: '10%', height: qualH, background: co.success, borderRadius: '3px 3px 0 0' }} />
+            <div style={{ width: '100%', position: 'relative', height: barH || 2, minHeight: 2 }}>
+              <div style={{ position: 'absolute', bottom: 0, left: '10%', right: '10%', height: barH || 2, background: color, borderRadius: '3px 3px 0 0' }} />
             </div>
             <div style={{ fontSize: 9, color: co.textDim, marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden',
               transform: data.length > 20 ? 'rotate(-45deg) translateX(-4px)' : 'none', transformOrigin: 'top left',
@@ -2528,11 +2526,6 @@ export function AnalyticsView({ clienteId }) {
   })
   const maxVal = Math.max(...chartData.map(d => d.total), 1)
 
-  // Distribuição por status
-  const statusMap = {}
-  leads.forEach(l => { const s = etapasMap[l.etapa_id] || 'Sem etapa'; statusMap[s] = (statusMap[s] || 0) + 1 })
-  const statusList = Object.entries(statusMap).sort((a, b) => b[1] - a[1])
-
   const presetBtns = [
     { id: '7d', label: 'Últimos 7 dias' },
     { id: '30d', label: 'Últimos 30 dias' },
@@ -2589,52 +2582,29 @@ export function AnalyticsView({ clienteId }) {
         ))}
       </div>
 
-      {/* Gráfico de barras */}
-      <div style={{ background: co.bgCard, border: `1px solid ${co.border}`, borderRadius: 12, padding: '20px 24px', marginBottom: 20 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <span style={{ fontSize: 14, fontWeight: 600, color: co.text }}>Leads por dia</span>
-          <div style={{ display: 'flex', gap: 16 }}>
-            <span style={{ fontSize: 12, color: co.textMuted, display: 'flex', alignItems: 'center', gap: 5 }}>
-              <span style={{ width: 10, height: 10, borderRadius: 2, background: co.primary, opacity: 0.6, display: 'inline-block' }} /> Recebidos
-            </span>
-            <span style={{ fontSize: 12, color: co.textMuted, display: 'flex', alignItems: 'center', gap: 5 }}>
-              <span style={{ width: 10, height: 10, borderRadius: 2, background: co.success, display: 'inline-block' }} /> Qualificados
-            </span>
-          </div>
-        </div>
+      {/* Gráfico — Leads recebidos por dia */}
+      <div style={{ background: co.bgCard, border: `1px solid ${co.border}`, borderRadius: 12, padding: '20px 24px', marginBottom: 16 }}>
+        <span style={{ fontSize: 14, fontWeight: 600, color: co.text }}>Leads por dia</span>
         {loading ? (
-          <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', color: co.textDim, fontSize: 13 }}>Carregando...</div>
+          <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', color: co.textDim, fontSize: 13, marginTop: 16 }}>Carregando...</div>
         ) : chartData.length === 0 ? (
-          <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', color: co.textDim, fontSize: 13 }}>Nenhum dado no período</div>
+          <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', color: co.textDim, fontSize: 13, marginTop: 16 }}>Nenhum dado no período</div>
         ) : (
-          <BarChart data={chartData} maxVal={maxVal} />
+          <BarChart data={chartData} field="total" color={co.primary} maxVal={Math.max(...chartData.map(d => d.total), 1)} />
         )}
       </div>
 
-      {/* Distribuição por status */}
-      {!loading && statusList.length > 0 && (
-        <div style={{ background: co.bgCard, border: `1px solid ${co.border}`, borderRadius: 12, padding: '20px 24px', marginBottom: 40 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: co.text, marginBottom: 16 }}>Distribuição por Status</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {statusList.map(([status, count]) => {
-              const pct = total > 0 ? Math.round((count / total) * 100) : 0
-              const barColor = status === 'Qualificado' ? co.success
-                : status === 'Descartado' ? co.danger : co.primary
-              return (
-                <div key={status}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                    <span style={{ fontSize: 13, color: co.text }}>{status}</span>
-                    <span style={{ fontSize: 13, color: co.textMuted, fontVariantNumeric: 'tabular-nums' }}>{count} <span style={{ color: co.textDim }}>({pct}%)</span></span>
-                  </div>
-                  <div style={{ height: 6, background: co.border, borderRadius: 3, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${pct}%`, background: barColor, borderRadius: 3, transition: 'width 0.5s ease' }} />
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
+      {/* Gráfico — Leads qualificados por dia */}
+      <div style={{ background: co.bgCard, border: `1px solid ${co.border}`, borderRadius: 12, padding: '20px 24px', marginBottom: 40 }}>
+        <span style={{ fontSize: 14, fontWeight: 600, color: co.text }}>Leads qualificados por dia</span>
+        {loading ? (
+          <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', color: co.textDim, fontSize: 13, marginTop: 16 }}>Carregando...</div>
+        ) : chartData.length === 0 ? (
+          <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', color: co.textDim, fontSize: 13, marginTop: 16 }}>Nenhum dado no período</div>
+        ) : (
+          <BarChart data={chartData} field="qual" color={co.success} maxVal={Math.max(...chartData.map(d => d.qual), 1)} />
+        )}
+      </div>
     </div>
   )
 }
