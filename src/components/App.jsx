@@ -2413,12 +2413,16 @@ function BarChart({ data, field, color, maxVal }) {
   const h = 160
   const showEvery = data.length <= 14 ? 1 : data.length <= 31 ? 2 : Math.ceil(data.length / 14)
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: h + 28, paddingBottom: 28, overflow: 'hidden' }}>
+    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: h + 44, paddingBottom: 28, overflow: 'hidden' }}>
       {data.map((d, i) => {
-        const barH = maxVal > 0 ? Math.round((d[field] / maxVal) * h) : 0
+        const val = d[field]
+        const barH = maxVal > 0 ? Math.round((val / maxVal) * h) : 0
         return (
-          <div key={d.date} title={`${d.label}: ${d[field]}`}
-            style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: h + 28, minWidth: 0 }}>
+          <div key={d.date} title={`${d.label}: ${val}`}
+            style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: h + 44, minWidth: 0 }}>
+            {val > 0 && (
+              <div style={{ fontSize: 9, color: color, fontWeight: 700, marginBottom: 2, whiteSpace: 'nowrap' }}>{val}</div>
+            )}
             <div style={{ width: '100%', position: 'relative', height: barH || 2, minHeight: 2 }}>
               <div style={{ position: 'absolute', bottom: 0, left: '10%', right: '10%', height: barH || 2, background: color, borderRadius: '3px 3px 0 0' }} />
             </div>
