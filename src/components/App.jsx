@@ -2414,35 +2414,39 @@ function BarChart({ data }) {
   const maxVal = Math.max(...data.map(d => Math.max(d.total, d.qual)), 1)
   const showEvery = data.length <= 14 ? 1 : data.length <= 31 ? 2 : Math.ceil(data.length / 14)
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: h + 36, paddingBottom: 28, overflow: 'visible', marginTop: 16 }}>
-      {data.map((d, i) => {
-        const totalH = maxVal > 0 ? Math.round((d.total / maxVal) * h) : 0
-        const qualH = maxVal > 0 ? Math.round((d.qual / maxVal) * h) : 0
-        return (
-          <div key={d.date}
-            style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: h + 36, minWidth: 0 }}>
-            {/* barras lado a lado */}
-            <div style={{ width: '100%', display: 'flex', alignItems: 'flex-end', gap: 1 }}>
-              {/* recebidos */}
+    <div style={{ marginTop: 16 }}>
+      {/* área de barras com altura fixa — cresce de baixo para cima */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: h, overflow: 'visible' }}>
+        {data.map((d) => {
+          const totalH = maxVal > 0 ? Math.round((d.total / maxVal) * h) : 0
+          const qualH = maxVal > 0 ? Math.round((d.qual / maxVal) * h) : 0
+          return (
+            <div key={d.date} style={{ flex: 1, display: 'flex', alignItems: 'flex-end', gap: 1, minWidth: 0 }}>
               <div style={{ flex: 1, position: 'relative', minWidth: 0 }}>
-                {d.total > 0 && <div style={{ position: 'absolute', bottom: totalH + 3, left: 0, right: 0, textAlign: 'center', fontSize: 8, color: co.primary, fontWeight: 700, whiteSpace: 'nowrap', lineHeight: 1 }}>{d.total}</div>}
-                <div style={{ height: totalH || 2, background: co.primary, borderRadius: '2px 2px 0 0', minHeight: 2 }} />
+                {d.total > 0 && <div style={{ position: 'absolute', bottom: '100%', left: 0, right: 0, textAlign: 'center', fontSize: 8, color: co.primary, fontWeight: 700, paddingBottom: 2, whiteSpace: 'nowrap' }}>{d.total}</div>}
+                <div style={{ height: totalH || 2, background: co.primary, borderRadius: '2px 2px 0 0' }} />
               </div>
-              {/* qualificados */}
               <div style={{ flex: 1, position: 'relative', minWidth: 0 }}>
-                {d.qual > 0 && <div style={{ position: 'absolute', bottom: qualH + 3, left: 0, right: 0, textAlign: 'center', fontSize: 8, color: co.success, fontWeight: 700, whiteSpace: 'nowrap', lineHeight: 1 }}>{d.qual}</div>}
-                <div style={{ height: qualH || 2, background: co.success, borderRadius: '2px 2px 0 0', minHeight: 2 }} />
+                {d.qual > 0 && <div style={{ position: 'absolute', bottom: '100%', left: 0, right: 0, textAlign: 'center', fontSize: 8, color: co.success, fontWeight: 700, paddingBottom: 2, whiteSpace: 'nowrap' }}>{d.qual}</div>}
+                <div style={{ height: qualH || 2, background: co.success, borderRadius: '2px 2px 0 0' }} />
               </div>
             </div>
-            {/* data */}
-            <div style={{ fontSize: 9, color: co.textDim, marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden',
-              transform: data.length > 20 ? 'rotate(-45deg) translateX(-4px)' : 'none', transformOrigin: 'top left',
-              display: i % showEvery === 0 ? 'block' : 'none' }}>
-              {d.label}
-            </div>
+          )
+        })}
+      </div>
+      {/* área de datas separada — sempre na mesma linha abaixo das barras */}
+      <div style={{ display: 'flex', gap: 3, height: 28, overflow: 'hidden', marginTop: 4 }}>
+        {data.map((d, i) => (
+          <div key={d.date} style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+            {i % showEvery === 0 && (
+              <div style={{ fontSize: 9, color: co.textDim, whiteSpace: 'nowrap',
+                transform: data.length > 20 ? 'rotate(-45deg) translateX(-2px)' : 'none', transformOrigin: 'top left' }}>
+                {d.label}
+              </div>
+            )}
           </div>
-        )
-      })}
+        ))}
+      </div>
     </div>
   )
 }
