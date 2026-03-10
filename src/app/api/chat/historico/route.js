@@ -9,15 +9,20 @@ const supabaseAdmin = createClient(
 export async function GET(req) {
   const { searchParams } = new URL(req.url)
   const telefone = searchParams.get('telefone')
+  const agenteId = searchParams.get('agenteId')
 
   if (!telefone) return NextResponse.json({ messages: [] })
 
-  // Lê de chat_messages (fonte principal — populada pelo webhook direto da UazAPI)
-  const { data: rows } = await supabaseAdmin
+  // Lê de chat_messages filtrando por agente para não vazar mensagens entre clientes
+  let q = supabaseAdmin
     .from('chat_messages')
     .select('id, session_id, type, content, media_url, media_type, message_id, created_at')
     .eq('session_id', telefone)
     .order('id', { ascending: true })
+
+  if (agenteId) q = q.eq('agente_id', agenteId)
+
+  const { data: rows } = await q
 
   let messages = (rows || []).map(m => ({
     id: `db_${m.id}`,

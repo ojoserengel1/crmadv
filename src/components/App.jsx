@@ -1254,7 +1254,8 @@ function LeadDrawer({ lead, onClose, onEdit, onDelete }) {
 
     const fetchMsgs = async () => {
       try {
-        const res = await fetch(`/api/chat/historico?telefone=${telefone}`)
+        const url = `/api/chat/historico?telefone=${telefone}${agenteId ? `&agenteId=${agenteId}` : ''}`
+        const res = await fetch(url)
         if (!res.ok || cancelled) return
         const { messages: newMsgs } = await res.json()
         if (cancelled || !newMsgs?.length) return
@@ -1620,10 +1621,12 @@ export function ChatView({ clienteId }) {
     if (!telefones.length) { setConversations([]); return }
 
     // Pega última mensagem de cada lead para o preview do sidebar
+    // Filtra também por agente_id para não mostrar mensagens de outros clientes
     const { data: chatData } = await supabase
       .from('chat_messages')
       .select('id, session_id, type, content')
       .in('session_id', telefones)
+      .in('agente_id', agenteIdsRef.current)
       .order('id', { ascending: false })
 
     const lastMsgMap = {}
@@ -1654,7 +1657,9 @@ export function ChatView({ clienteId }) {
 
     const fetchMsgs = async () => {
       try {
-        const res = await fetch(`/api/chat/historico?telefone=${selectedSession}`)
+        const agenteId = leadsRef.current.find(l => l.telefone === selectedSession)?.agente_id
+        const url = `/api/chat/historico?telefone=${selectedSession}${agenteId ? `&agenteId=${agenteId}` : ''}`
+        const res = await fetch(url)
         if (!res.ok || cancelled) return
         const { messages: newMsgs } = await res.json()
         if (cancelled || !newMsgs?.length) return
