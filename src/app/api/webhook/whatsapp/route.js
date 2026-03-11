@@ -226,7 +226,7 @@ export async function POST(req) {
         .select('agente_id')
         .eq('telefone', telefone)
         .in('agente_id', agentesInstancia.map(a => a.id))
-        .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
         .limit(1)
         .maybeSingle()
 
