@@ -209,12 +209,36 @@ export async function POST(req) {
       return NextResponse.json({ ok: true })
     }
 
-    // Busca agente pela instância — pega também webhook_path, cliente_id e ia_ativa
-    const { data: agente } = await supabaseAdmin
+    // Busca agentes pela instância (pode haver múltiplos na mesma instância)
+    const { data: agentesInstancia } = await supabaseAdmin
       .from('agentes')
-      .select('id, cliente_id, webhook_path, ia_ativa')
+      .select('id, cliente_id, webhook_path, ia_ativa, frase_gatilho')
       .eq('instancia_wpp', instanceName)
-      .single()
+
+    let agente = agentesInstancia?.[0] || null
+
+    // Multi-agente: rotear para o agente correto
+    if (agentesInstancia && agentesInstancia.length > 1 && !fromMe) {
+      // 1. Lead já existe → rotear para o agente que o atende
+      const { data: leadExistente } = await supabaseAdmin
+        .from('leads')
+        .select('agente_id')
+        .eq('telefone', telefone)
+        .in('agente_id', agentesInstancia.map(a => a.id))
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (leadExistente) {
+        agente = agentesInstancia.find(a => a.id === leadExistente.agente_id) || agente
+      } else {
+        // 2. Lead novo → match frase_gatilho no texto
+        const lower = (text || '').toLowerCase()
+        const matched = agentesInstancia.find(a => a.frase_gatilho && lower.includes(a.frase_gatilho.toLowerCase()))
+        if (matched) agente = matched
+        // 3. Fallback → primeiro agente (agente já é agentesInstancia[0])
+      }
+    }
 
     const agenteId = agente?.id || null
     const clienteId = agente?.cliente_id || null

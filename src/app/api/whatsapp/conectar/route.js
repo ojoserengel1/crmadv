@@ -5,7 +5,7 @@ const UAZAPI_URL = process.env.UAZAPI_SERVER_URL
 const UAZAPI_ADMIN_TOKEN = process.env.UAZAPI_ADMIN_TOKEN
 
 export async function POST(req) {
-  const { agenteId, nomeInstancia } = await req.json()
+  const { agenteId, nomeInstancia, clienteId } = await req.json()
 
   if (!agenteId || !nomeInstancia) {
     return NextResponse.json({ error: 'agenteId e nomeInstancia são obrigatórios' }, { status: 400 })
@@ -73,6 +73,19 @@ export async function POST(req) {
 
   if (dbErr) {
     return NextResponse.json({ error: dbErr.message }, { status: 500 })
+  }
+
+  // Propagar mesma instância para todos os outros agentes do cliente (multi-agente)
+  if (clienteId) {
+    await admin
+      .from('agentes')
+      .update({
+        uazapi_instance_id: instanceId,
+        uazapi_token: instanceToken,
+        instancia_wpp: nomeInstancia,
+      })
+      .eq('cliente_id', clienteId)
+      .neq('id', agenteId)
   }
 
   // 4. Configurar webhook da UazAPI para apontar para nossa app

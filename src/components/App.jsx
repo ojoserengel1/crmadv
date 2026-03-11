@@ -734,6 +734,9 @@ export function ConfigView({ clienteId, initAgenteId, initSection }) {
   }, [activeAgente])
 
   const agente = agenteConfigs[activeAgente] || {}
+  // WhatsApp é compartilhado: usa o primeiro agente com instância conectada, ou o primeiro agente
+  const sharedAgenteId = agentes.find(a => agenteConfigs[a.id]?.uazapi_instance_id)?.id || agentes[0]?.id || null
+  const sharedAgente = agenteConfigs[sharedAgenteId] || {}
   const ativas = perguntas.filter(p => p.ativa).length
 
   const updateAgente = (f, v) => setAgenteConfigs(prev => ({ ...prev, [activeAgente]: { ...prev[activeAgente], [f]: v } }))
@@ -777,7 +780,7 @@ export function ConfigView({ clienteId, initAgenteId, initSection }) {
     updateAgente('url_audio', '')
   }
 
-  // Quando muda de agente, resetar e verificar status real com UazAPI
+  // Status WPP é compartilhado entre todos os agentes — verifica ao carregar a lista
   useEffect(() => {
     setWppPhase('idle')
     setWppQr(null)
@@ -785,17 +788,18 @@ export function ConfigView({ clienteId, initAgenteId, initSection }) {
     setWppRealConnected(null)
     if (wppPollRef.current) { clearInterval(wppPollRef.current); wppPollRef.current = null }
 
-    if (!activeAgente) return
-    const a = agenteConfigs[activeAgente]
+    const sid = agentes.find(a => agenteConfigs[a.id]?.uazapi_instance_id)?.id || agentes[0]?.id
+    if (!sid) return
+    const a = agenteConfigs[sid]
     if (!a?.uazapi_instance_id) return
 
     // Tem instância — verificar se realmente conectado
     setWppRealConnected(null) // checking
-    fetch(`/api/whatsapp/status?agenteId=${activeAgente}`)
+    fetch(`/api/whatsapp/status?agenteId=${sid}`)
       .then(r => r.json())
       .then(d => setWppRealConnected(d.connected === true))
       .catch(() => setWppRealConnected(false))
-  }, [activeAgente])
+  }, [agentes])
 
   // Cleanup ao desmontar
   useEffect(() => {
@@ -814,9 +818,9 @@ export function ConfigView({ clienteId, initAgenteId, initSection }) {
           setWppPhase('idle')
           setWppQr(null)
           setWppRealConnected(true)
-          // Recarregar dados do agente
-          const { data: updated } = await supabase.from('agentes').select('*').eq('id', agenteId).single()
-          if (updated) setAgenteConfigs(prev => ({ ...prev, [agenteId]: updated }))
+          // Recarregar dados de todos os agentes do cliente
+          const { data: updated } = await supabase.from('agentes').select('*').eq('cliente_id', clienteId)
+          if (updated) setAgenteConfigs(Object.fromEntries(updated.map(a => [a.id, a])))
         } else if (data.qrCode) {
           setWppQr(data.qrCode)
         }
@@ -827,19 +831,21 @@ export function ConfigView({ clienteId, initAgenteId, initSection }) {
   const conectarWhatsApp = async () => {
     setWppPhase('connecting')
     setWppError(null)
-    const nomeSanitizado = (agente.nome || 'agente').toLowerCase().replace(/[^a-z0-9]/g, '-')
-    const nomeInstancia = `ia-${nomeSanitizado}-${activeAgente.substring(0, 6)}`
+    const sid = sharedAgenteId
+    const sa = agenteConfigs[sid] || {}
+    const nomeSanitizado = (sa.nome || 'agente').toLowerCase().replace(/[^a-z0-9]/g, '-')
+    const nomeInstancia = `ia-${nomeSanitizado}-${sid?.substring(0, 6)}`
     try {
       const res = await fetch('/api/whatsapp/conectar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ agenteId: activeAgente, nomeInstancia }),
+        body: JSON.stringify({ agenteId: sid, nomeInstancia, clienteId }),
       })
       const data = await res.json()
       if (!res.ok) { setWppError(data.error || 'Erro ao conectar'); setWppPhase('idle'); return }
       if (data.qrCode) setWppQr(data.qrCode)
       setWppPhase('scanning')
-      startWppPoll(activeAgente)
+      startWppPoll(sid)
     } catch (err) {
       setWppError('Erro de conexão com o servidor')
       setWppPhase('idle')
@@ -850,11 +856,12 @@ export function ConfigView({ clienteId, initAgenteId, initSection }) {
     setWppPhase('scanning')
     setWppQr(null)
     setWppError(null)
+    const sid = sharedAgenteId
     // Usa instância existente — chama /qrcode que aciona /instance/connect internamente
-    startWppPoll(activeAgente)
+    startWppPoll(sid)
     // Buscar QR imediato
     try {
-      const res = await fetch(`/api/whatsapp/qrcode?agenteId=${activeAgente}`)
+      const res = await fetch(`/api/whatsapp/qrcode?agenteId=${sid}`)
       const data = await res.json()
       if (data.connected) {
         setWppPhase('idle')
@@ -871,9 +878,16 @@ export function ConfigView({ clienteId, initAgenteId, initSection }) {
       await fetch('/api/whatsapp/desconectar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ agenteId: activeAgente }),
+        body: JSON.stringify({ agenteId: sharedAgenteId, clienteId }),
       })
-      setAgenteConfigs(prev => ({ ...prev, [activeAgente]: { ...prev[activeAgente], uazapi_instance_id: null, uazapi_token: null, instancia_wpp: null } }))
+      // Limpar instância de TODOS os agentes do cliente no estado local
+      setAgenteConfigs(prev => {
+        const next = { ...prev }
+        agentes.forEach(a => {
+          next[a.id] = { ...next[a.id], uazapi_instance_id: null, uazapi_token: null, instancia_wpp: null }
+        })
+        return next
+      })
       setWppPhase('idle')
       setWppRealConnected(null)
     } catch (_) {
@@ -910,7 +924,7 @@ export function ConfigView({ clienteId, initAgenteId, initSection }) {
 
       <div style={{ maxWidth: 700 }}>
         {activeSection === "whatsapp" && (() => {
-          const hasInstance = !!agente.uazapi_instance_id
+          const hasInstance = !!sharedAgente.uazapi_instance_id
           const isConnected = hasInstance && wppRealConnected === true
           const isDisconnected = hasInstance && wppRealConnected === false && wppPhase === 'idle'
           const isChecking = hasInstance && wppRealConnected === null && wppPhase === 'idle'
@@ -928,8 +942,8 @@ export function ConfigView({ clienteId, initAgenteId, initSection }) {
             <div style={{ background: co.bgCard, borderRadius: 12, border: `1px solid ${co.border}`, padding: 28, textAlign: "center" }}>
               <div style={{ width: 64, height: 64, borderRadius: "50%", background: co.successBg, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", fontSize: 32 }}>✓</div>
               <h3 style={{ color: co.success, fontSize: 18, fontWeight: 700, margin: "0 0 8px" }}>WhatsApp Conectado</h3>
-              <p style={{ color: co.textMuted, fontSize: 13, margin: "0 0 4px" }}>Instância: <strong style={{ color: co.text }}>{agente.instancia_wpp}</strong></p>
-              <p style={{ color: co.textDim, fontSize: 12, margin: "0 0 24px" }}>I.A: {agente.nome}</p>
+              <p style={{ color: co.textMuted, fontSize: 13, margin: "0 0 4px" }}>Instância: <strong style={{ color: co.text }}>{sharedAgente.instancia_wpp}</strong></p>
+              <p style={{ color: co.textDim, fontSize: 12, margin: "0 0 24px" }}>Compartilhado entre todas as I.As</p>
               <Btn variant="danger" size="sm" onClick={desconectarWhatsApp} disabled={wppDisconnecting}>
                 {wppDisconnecting ? "Desconectando..." : "Desconectar"}
               </Btn>
@@ -941,7 +955,7 @@ export function ConfigView({ clienteId, initAgenteId, initSection }) {
             <div style={{ background: co.bgCard, borderRadius: 12, border: `1px solid ${co.border}`, padding: 40, textAlign: "center" }}>
               <div style={{ width: 64, height: 64, borderRadius: "50%", background: co.warningBg, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", fontSize: 28 }}>⚠</div>
               <h3 style={{ color: co.warning, fontSize: 17, fontWeight: 700, margin: "0 0 8px" }}>WhatsApp Desconectado</h3>
-              <p style={{ color: co.textMuted, fontSize: 13, margin: "0 0 4px" }}>Instância: <strong style={{ color: co.text }}>{agente.instancia_wpp}</strong></p>
+              <p style={{ color: co.textMuted, fontSize: 13, margin: "0 0 4px" }}>Instância: <strong style={{ color: co.text }}>{sharedAgente.instancia_wpp}</strong></p>
               <p style={{ color: co.textDim, fontSize: 12, margin: "0 0 24px" }}>Escaneie novamente para reconectar</p>
               {wppError && <p style={{ color: co.danger, fontSize: 13, margin: "0 0 16px", padding: "8px 16px", background: co.dangerBg, borderRadius: 8 }}>{wppError}</p>}
               <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
