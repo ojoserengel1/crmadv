@@ -308,9 +308,24 @@ export async function POST(req) {
       if (insertErr) console.error('[webhook] insert erro:', insertErr.message)
     }
 
-    // Repassa ao N8N somente mensagens recebidas (fromMe=false)
+    // Verifica se o lead já foi qualificado — se sim, não repassa ao N8N (evita reinício de atendimento)
+    let leadJaQualificado = false
+    if (!fromMe && agenteId) {
+      const { data: leadAtual } = await supabaseAdmin
+        .from('leads')
+        .select('status, resumo')
+        .eq('telefone', telefone)
+        .eq('agente_id', agenteId)
+        .maybeSingle()
+      if (leadAtual?.resumo || leadAtual?.status === 'Qualificado') {
+        leadJaQualificado = true
+        console.log(`[webhook] lead já qualificado, não relaying para N8N (${telefone})`)
+      }
+    }
+
+    // Repassa ao N8N somente mensagens recebidas (fromMe=false) e lead não qualificado
     // URL por agente: N8N_BASE_URL/webhook/{webhook_path}
-    if (!fromMe && N8N_BASE_URL && agente?.webhook_path) {
+    if (!fromMe && !leadJaQualificado && N8N_BASE_URL && agente?.webhook_path) {
       const n8nUrl = `${N8N_BASE_URL}/webhook/${agente.webhook_path}`
       try {
         const n8nRes = await fetch(n8nUrl, {
