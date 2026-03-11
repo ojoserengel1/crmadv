@@ -233,8 +233,10 @@ export async function POST(req) {
         agente = agentesInstancia.find(a => a.id === leadExistente.agente_id) || agente
       } else {
         // 2. Lead novo → match frase_gatilho no texto
+        // Ordena por especificidade (frase mais longa primeiro) para evitar match prematuro
         const lower = (text || '').toLowerCase()
-        const matched = agentesInstancia.find(a => a.frase_gatilho && lower.includes(a.frase_gatilho.toLowerCase()))
+        const sortedBySpec = [...agentesInstancia].sort((a, b) => (b.frase_gatilho?.length || 0) - (a.frase_gatilho?.length || 0))
+        const matched = sortedBySpec.find(a => a.frase_gatilho && lower.includes(a.frase_gatilho.toLowerCase()))
         if (matched) agente = matched
         // 3. Fallback → primeiro agente (agente já é agentesInstancia[0])
       }

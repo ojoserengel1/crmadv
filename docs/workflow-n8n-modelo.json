@@ -131,7 +131,7 @@
             {
               "id": "6091415b-fb1b-4920-acc0-f34982c575ce",
               "name": "agente_id",
-              "value": "={{ $('BUSCAR CLIENTE').item.json.id }} ",
+              "value": "={{ $('BUSCAR CLIENTE').item.json.id }}",
               "type": "string"
             },
             {
@@ -143,7 +143,7 @@
             {
               "id": "8bc9ec2c-fe12-44bb-bf96-6516e0135fe0",
               "name": "ia_ativa",
-              "value": "={{ $json.ia_ativa }}",
+              "value": "={{ $('BUSCAR CLIENTE').item.json.ia_ativa }}",
               "type": "boolean"
             }
           ]
@@ -204,8 +204,8 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3,
       "position": [
-        3648,
-        -1392
+        3840,
+        -1408
       ],
       "id": "51566e90-5321-484e-85eb-0ec6be87f1c9",
       "name": "AI Agent"
@@ -217,8 +217,8 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1,
       "position": [
-        3568,
-        -1088
+        3776,
+        -1168
       ],
       "id": "565d7fe3-3b81-4e20-94f2-f5bd3b765970",
       "name": "API - IA QUALIFICACAO - ADV",
@@ -398,8 +398,8 @@
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 3,
       "position": [
-        4832,
-        -1392
+        5024,
+        -1408
       ],
       "id": "6da2f743-7733-43d1-963d-02e8a64ed503",
       "name": "Loop Over Items"
@@ -412,8 +412,8 @@
       "type": "n8n-nodes-base.splitOut",
       "typeVersion": 1,
       "position": [
-        4624,
-        -1392
+        4816,
+        -1408
       ],
       "id": "89a3664e-cf2a-44e4-b7c0-5d75c3304255",
       "name": "Split Out",
@@ -427,8 +427,8 @@
       "type": "n8n-nodes-base.redis",
       "typeVersion": 1,
       "position": [
-        4160,
-        -1392
+        4352,
+        -1408
       ],
       "id": "329187f1-4a38-4f7a-99d7-bd53ac09d38d",
       "name": "Redis",
@@ -446,8 +446,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        4416,
-        -1392
+        4608,
+        -1408
       ],
       "id": "089807f9-ed67-4dc3-ab09-32e55cdf232e",
       "name": "Code in JavaScript1"
@@ -512,15 +512,15 @@
     {
       "parameters": {
         "sessionIdType": "customKey",
-        "sessionKey": "={{ $('DADOS LEAD').item.json.agente_id }}:{{ $json.message.chatid }}",
+        "sessionKey": "={{ $('DADOS LEAD').item.json.agente_id }}:{{ $('DADOS LEAD').item.json.telefone }}",
         "tableName": "chat_memory",
         "contextWindowLength": 30
       },
       "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
       "typeVersion": 1.3,
       "position": [
-        3744,
-        -1152
+        3936,
+        -1168
       ],
       "id": "8959565d-a6e8-4f85-8b55-e077221568df",
       "name": "Postgres Chat Memory",
@@ -538,8 +538,8 @@
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
       "position": [
-        5168,
-        -1296
+        5360,
+        -1312
       ],
       "id": "cd63a5d8-2960-4350-85c1-1cfe65eb9e3b",
       "name": "Wait1",
@@ -645,7 +645,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT COUNT(*) as total FROM chat_memory WHERE session_id = '{{ $('DADOS LEAD').item.json.telefone }}'",
+        "query": "  SELECT COUNT(*) as total FROM chat_memory\n  WHERE session_id = '{{ $(\"DADOS LEAD\").item.json.agente_id }}:{{ $(\"DADOS LEAD\").item.json.telefone }}'\n  OR session_id = '{{ $(\"DADOS LEAD\").item.json.telefone }}'",
         "options": {}
       },
       "type": "n8n-nodes-base.postgres",
@@ -697,7 +697,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT COUNT(*) as total FROM chat_memory WHERE session_id = '{{ $('DADOS LEAD').item.json.telefone }}'",
+        "query": "  SELECT COUNT(*) as total FROM chat_memory\n  WHERE session_id = '{{ $(\"DADOS LEAD\").item.json.agente_id }}:{{ $(\"DADOS LEAD\").item.json.telefone }}'\n  OR session_id = '{{ $(\"DADOS LEAD\").item.json.telefone }}'",
         "options": {}
       },
       "type": "n8n-nodes-base.postgres",
@@ -907,8 +907,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        4160,
-        -1712
+        4352,
+        -1728
       ],
       "id": "d67669f5-0ae5-4b1e-a0b5-830ed20df015",
       "name": "If2"
@@ -918,8 +918,8 @@
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        5248,
-        -1472
+        5440,
+        -1488
       ],
       "id": "e99e9e3c-84ab-40e9-8545-b39af7861a86",
       "name": "No Operation, do nothing1"
@@ -935,8 +935,8 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3,
       "position": [
-        4480,
-        -2000
+        4672,
+        -2016
       ],
       "id": "157fb773-f6b0-4005-8e15-c6d9713930a7",
       "name": "AI Agent1"
@@ -948,8 +948,8 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1,
       "position": [
-        4464,
-        -1776
+        4656,
+        -1792
       ],
       "id": "cfdb64f7-5901-4eb7-8e12-18790b5c43cf",
       "name": "API - IA QUALIFICACAO - ADV1",
@@ -963,15 +963,15 @@
     {
       "parameters": {
         "sessionIdType": "customKey",
-        "sessionKey": "={{ $('DADOS LEAD').item.json.agente_id }}:{{ $json.message.chatid }}",
+        "sessionKey": "={{ $('DADOS LEAD').item.json.agente_id }}:{{ $('DADOS LEAD').item.json.telefone }}",
         "tableName": "chat_memory",
         "contextWindowLength": 30
       },
       "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
       "typeVersion": 1.3,
       "position": [
-        4576,
-        -1776
+        4768,
+        -1792
       ],
       "id": "98029fed-6c7e-485e-892d-fcdb601d4eaf",
       "name": "Postgres Chat Memory1",
@@ -987,8 +987,8 @@
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        5008,
-        -2000
+        5200,
+        -2016
       ],
       "id": "f9f7b42f-dd34-43aa-b628-ac99e8480062",
       "name": "No Operation, do nothing2"
@@ -1068,8 +1068,8 @@
       "type": "n8n-nodes-base.redis",
       "typeVersion": 1,
       "position": [
-        4288,
-        -1392
+        4480,
+        -1408
       ],
       "id": "a11a48cd-bf84-4d8d-9923-4574875ccb20",
       "name": "Redis1",
@@ -1147,7 +1147,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "  SELECT a.*,                                                                                                                                                                                                        \n    c.nome_cliente,                                         \n    (SELECT json_agg(p ORDER BY p.ordem)\n     FROM perguntas_qualificacao p\n     WHERE p.agente_id = a.id AND p.ativa = true) as perguntas,\n    (SELECT STRING_AGG('Pergunta ' || p.ordem || ':' || E'\\n' || p.pergunta, E'\\n\\n' ORDER BY p.ordem)\n     FROM perguntas_qualificacao p\n     WHERE p.agente_id = a.id AND p.ativa = true) as perguntas_texto,\n    (SELECT COUNT(*)::int\n     FROM perguntas_qualificacao p\n     WHERE p.agente_id = a.id AND p.ativa = true) as num_perguntas\n  FROM agentes a\n  JOIN clientes c ON c.id = a.cliente_id\nWHERE a.instancia_wpp = '{{ $('Webhook').item.json.body.instanceName }}'  LIMIT 1",
+        "query": "  SELECT a.*,                                                                                                                                                                                                        \n    c.nome_cliente,                                         \n    (SELECT json_agg(p ORDER BY p.ordem)\n     FROM perguntas_qualificacao p\n     WHERE p.agente_id = a.id AND p.ativa = true) as perguntas,\n    (SELECT STRING_AGG('Pergunta ' || p.ordem || ':' || E'\\n' || p.pergunta, E'\\n\\n' ORDER BY p.ordem)\n     FROM perguntas_qualificacao p\n     WHERE p.agente_id = a.id AND p.ativa = true) as perguntas_texto,\n    (SELECT COUNT(*)::int\n     FROM perguntas_qualificacao p\n     WHERE p.agente_id = a.id AND p.ativa = true) as num_perguntas\n  FROM agentes a\n  JOIN clientes c ON c.id = a.cliente_id\nWHERE a.id = '{{ $('Webhook').item.json.body.agente_id }}'",
         "options": {}
       },
       "type": "n8n-nodes-base.postgres",
@@ -1174,8 +1174,8 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        4800,
-        -2000
+        4992,
+        -2016
       ],
       "id": "f02f5658-7824-400d-8b10-6a9f37a18432",
       "name": "SALVAR RESUMO",
@@ -1201,21 +1201,6 @@
     },
     {
       "parameters": {
-        "content": "### Adicionar Áudio Link",
-        "height": 208,
-        "width": 224
-      },
-      "type": "n8n-nodes-base.stickyNote",
-      "position": [
-        3392,
-        -1680
-      ],
-      "typeVersion": 1,
-      "id": "671906f9-266b-421f-a64a-08e363e7b245",
-      "name": "Sticky Note"
-    },
-    {
-      "parameters": {
         "method": "POST",
         "url": "https://grupoadv.uazapi.com/send/text",
         "sendHeaders": true,
@@ -1235,8 +1220,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        5008,
-        -1296
+        5200,
+        -1312
       ],
       "id": "56ede25f-ea3f-4f88-b33c-ff7f1fc84237",
       "name": "Enviar Texto"
@@ -1262,8 +1247,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        3456,
-        -1632
+        3568,
+        -1616
       ],
       "id": "c87cfd46-d49b-4320-a9c4-601752a90a1f",
       "name": "ÁUDIO BOAS VINDAS"
@@ -1315,8 +1300,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3936,
-        -1392
+        4128,
+        -1408
       ],
       "id": "f120deae-8b0f-46b8-a250-344bfc3f9397",
       "name": "CAPTURAR OUTPUT"
@@ -1355,6 +1340,41 @@
       ],
       "id": "22bc7322-98d6-4b66-bb61-6adb80292982",
       "name": "IA Ativa?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0da1fac7-3360-4fa6-bf19-17d7ff320b0c",
+              "leftValue": "={{ $('DADOS LEAD').item.json.url_audio }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3360,
+        -1600
+      ],
+      "id": "acadc077-dc0b-4b7a-9330-ca894c70b4b2",
+      "name": "Tem Áudio?"
     }
   ],
   "pinData": {
@@ -1780,7 +1800,7 @@
       "main": [
         [
           {
-            "node": "ÁUDIO BOAS VINDAS",
+            "node": "Tem Áudio?",
             "type": "main",
             "index": 0
           }
@@ -2097,6 +2117,24 @@
           }
         ]
       ]
+    },
+    "Tem Áudio?": {
+      "main": [
+        [
+          {
+            "node": "ÁUDIO BOAS VINDAS",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
@@ -2109,7 +2147,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "edb53c2f-4da1-4c6d-8178-190a0976cfbb",
+  "versionId": "4fe1d786-b917-4853-ad73-30ad72240669",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "804c00b1e5188d906bae124422d170cfebea2fae250a07ce077882d6fad45087"
