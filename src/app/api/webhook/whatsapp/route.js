@@ -308,24 +308,37 @@ export async function POST(req) {
       if (insertErr) console.error('[webhook] insert erro:', insertErr.message)
     }
 
-    // Verifica se o lead já foi qualificado — se sim, não repassa ao N8N (evita reinício de atendimento)
-    let leadJaQualificado = false
+    // Verifica se a IA já processou este lead — se sim, não repassa ao N8N
+    // Critério robusto: lead passou da primeira etapa do funil (não muda com edição de status/resumo)
+    // Se advogado mover o lead de volta para etapa 1, a IA volta a responder (intencional)
+    let leadJaProcessado = false
     if (!fromMe && agenteId) {
-      const { data: leadAtual } = await supabaseAdmin
-        .from('leads')
-        .select('status, resumo')
-        .eq('telefone', telefone)
-        .eq('agente_id', agenteId)
-        .maybeSingle()
-      if (leadAtual?.resumo || leadAtual?.status === 'Qualificado') {
-        leadJaQualificado = true
-        console.log(`[webhook] lead já qualificado, não relaying para N8N (${telefone})`)
+      const [{ data: leadAtual }, { data: primeiraEtapa }] = await Promise.all([
+        supabaseAdmin.from('leads')
+          .select('etapa_id, resumo')
+          .eq('telefone', telefone)
+          .eq('agente_id', agenteId)
+          .maybeSingle(),
+        supabaseAdmin.from('etapas_funil')
+          .select('id')
+          .eq('agente_id', agenteId)
+          .order('ordem', { ascending: true })
+          .limit(1)
+          .maybeSingle(),
+      ])
+      if (leadAtual) {
+        const foiDaPrimeiraEtapa = primeiraEtapa && leadAtual.etapa_id !== primeiraEtapa.id
+        const temResumo = !!leadAtual.resumo
+        if (foiDaPrimeiraEtapa || temResumo) {
+          leadJaProcessado = true
+          console.log(`[webhook] lead já processado pela IA, não relaying N8N (${telefone}, etapa: ${leadAtual.etapa_id})`)
+        }
       }
     }
 
     // Repassa ao N8N somente mensagens recebidas (fromMe=false) e lead não qualificado
     // URL por agente: N8N_BASE_URL/webhook/{webhook_path}
-    if (!fromMe && !leadJaQualificado && N8N_BASE_URL && agente?.webhook_path) {
+    if (!fromMe && !leadJaProcessado && N8N_BASE_URL && agente?.webhook_path) {
       const n8nUrl = `${N8N_BASE_URL}/webhook/${agente.webhook_path}`
       try {
         const n8nRes = await fetch(n8nUrl, {
