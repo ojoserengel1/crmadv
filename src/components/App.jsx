@@ -1618,6 +1618,22 @@ export function ChatView({ clienteId }) {
     init()
   }, [clienteId])
 
+  // Atualiza lista de leads a cada 15s — captura leads criados durante a sessão (webhook ou N8N)
+  useEffect(() => {
+    if (loading || !agenteIdsRef.current.length) return
+    const interval = setInterval(async () => {
+      const { data: leadsData } = await supabase
+        .from('leads')
+        .select('id, telefone, nome, nicho, agente_id')
+        .in('agente_id', agenteIdsRef.current)
+      if (leadsData) {
+        leadsRef.current = leadsData
+        setLeads(leadsData)
+      }
+    }, 15000)
+    return () => clearInterval(interval)
+  }, [loading])
+
   // Polling do sidebar a cada 5s — detecta novas mensagens/conversas via webhook
   useEffect(() => {
     if (loading) return

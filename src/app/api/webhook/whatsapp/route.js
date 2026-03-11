@@ -209,10 +209,13 @@ export async function POST(req) {
       return NextResponse.json({ ok: true })
     }
 
+    // Nome do remetente (lead) — usado no cadastro direto do lead
+    const senderName = msg.senderName || null
+
     // Busca agentes pela instância (pode haver múltiplos na mesma instância)
     const { data: agentesInstancia } = await supabaseAdmin
       .from('agentes')
-      .select('id, cliente_id, webhook_path, ia_ativa, frase_gatilho')
+      .select('id, cliente_id, webhook_path, ia_ativa, frase_gatilho, nicho')
       .eq('instancia_wpp', instanceName)
 
     let agente = agentesInstancia?.[0] || null
@@ -308,12 +311,16 @@ export async function POST(req) {
       if (insertErr) console.error('[webhook] insert erro:', insertErr.message)
     }
 
-    // Verifica se a IA já processou este lead — se sim, não repassa ao N8N
+    // Verifica situação do lead no funil — usado para:
+    //   1) decidir se repassa ao N8N (leadJaProcessado)
+    //   2) decidir se cadastra o lead direto (leadAtual=null + frase_gatilho match)
     // Critério robusto: lead passou da primeira etapa do funil (não muda com edição de status/resumo)
     // Se advogado mover o lead de volta para etapa 1, a IA volta a responder (intencional)
     let leadJaProcessado = false
+    let leadAtual = null
+    let primeiraEtapa = null
     if (!fromMe && agenteId) {
-      const [{ data: leadAtual }, { data: primeiraEtapa }] = await Promise.all([
+      const results = await Promise.all([
         supabaseAdmin.from('leads')
           .select('etapa_id, resumo')
           .eq('telefone', telefone)
@@ -326,6 +333,8 @@ export async function POST(req) {
           .limit(1)
           .maybeSingle(),
       ])
+      leadAtual = results[0].data
+      primeiraEtapa = results[1].data
       if (leadAtual) {
         const foiDaPrimeiraEtapa = primeiraEtapa && leadAtual.etapa_id !== primeiraEtapa.id
         const temResumo = !!leadAtual.resumo
@@ -333,6 +342,32 @@ export async function POST(req) {
           leadJaProcessado = true
           console.log(`[webhook] lead já processado pela IA, não relaying N8N (${telefone}, etapa: ${leadAtual.etapa_id})`)
         }
+      }
+    }
+
+    // Cadastra lead diretamente no CRM quando mensagem contém frase_gatilho
+    // Independente do N8N — garante que o lead existe mesmo se N8N falhar ou recusar
+    // N8N pode sobrescrever apenas o nome (ON CONFLICT DO UPDATE SET nome=...) sem conflito
+    if (!fromMe && !leadJaProcessado && !leadAtual && primeiraEtapa && agenteId) {
+      const fraGatilho = (agente?.frase_gatilho || '').trim().toLowerCase()
+      const msgLower = (text || '').toLowerCase()
+      // Só registra se frase_gatilho está configurada no agente E mensagem a contém
+      const deveRegistrar = fraGatilho && msgLower.includes(fraGatilho)
+      if (deveRegistrar) {
+        const { error: leadErr } = await supabaseAdmin.from('leads').upsert(
+          {
+            agente_id: agenteId,
+            cliente_id: clienteId,
+            etapa_id: primeiraEtapa.id,
+            telefone,
+            nome: senderName,
+            nicho: agente?.nicho || null,
+            status: 'Atendimento (IA)',
+          },
+          { onConflict: 'agente_id,telefone', ignoreDuplicates: true }
+        )
+        if (leadErr) console.error('[webhook] erro ao criar lead:', leadErr.message)
+        else console.log(`[webhook] lead registrado diretamente: ${telefone} → agente ${agenteId}`)
       }
     }
 
