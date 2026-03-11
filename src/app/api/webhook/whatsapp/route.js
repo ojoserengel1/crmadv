@@ -218,8 +218,9 @@ export async function POST(req) {
     let agente = agentesInstancia?.[0] || null
 
     // Multi-agente: rotear para o agente correto
-    if (agentesInstancia && agentesInstancia.length > 1 && !fromMe) {
-      // 1. Lead já existe → rotear para o agente que o atende
+    // Lead lookup roda para fromMe=true E fromMe=false (IA e humano)
+    if (agentesInstancia && agentesInstancia.length > 1) {
+      // 1. Busca lead existente pelo telefone — identifica o agente que atende este contato
       const { data: leadExistente } = await supabaseAdmin
         .from('leads')
         .select('agente_id')
@@ -231,8 +232,8 @@ export async function POST(req) {
 
       if (leadExistente) {
         agente = agentesInstancia.find(a => a.id === leadExistente.agente_id) || agente
-      } else {
-        // 2. Lead novo → match frase_gatilho no texto
+      } else if (!fromMe) {
+        // 2. Lead novo (só para mensagens do contato) → match frase_gatilho no texto
         // Ordena por especificidade (frase mais longa primeiro) para evitar match prematuro
         const lower = (text || '').toLowerCase()
         const sortedBySpec = [...agentesInstancia].sort((a, b) => (b.frase_gatilho?.length || 0) - (a.frase_gatilho?.length || 0))
