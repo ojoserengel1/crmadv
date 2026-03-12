@@ -257,6 +257,39 @@ CREATE POLICY "Admin full leads" ON leads FOR ALL
   USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
 
 -- ============================================================
+-- CHAT_MESSAGES — sistema de chat independente do N8N
+-- Execute este bloco separadamente se a tabela ainda não existe
+-- ou se precisar garantir a estrutura correta
+-- ============================================================
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id          bigserial PRIMARY KEY,
+  agente_id   uuid REFERENCES agentes(id) ON DELETE SET NULL,   -- nullable: salva mesmo se routing falhar
+  cliente_id  uuid REFERENCES clientes(id) ON DELETE SET NULL,  -- nullable
+  session_id  text NOT NULL,   -- telefone normalizado (55XXXXXXXXXXX)
+  type        text NOT NULL,   -- 'human' | 'ai' | 'agent'
+  content     text,
+  media_url   text,
+  media_type  text,            -- 'image' | 'ptt' | 'audio' | 'video' | 'document'
+  message_id  text UNIQUE,     -- deduplicação (message_id da UazAPI)
+  created_at  timestamptz DEFAULT now()
+);
+
+-- agente_id e cliente_id devem ser NULLABLE
+ALTER TABLE chat_messages ALTER COLUMN agente_id  DROP NOT NULL;
+ALTER TABLE chat_messages ALTER COLUMN cliente_id DROP NOT NULL;
+
+-- Índices de performance
+CREATE INDEX IF NOT EXISTS idx_chat_messages_session        ON chat_messages(session_id);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_agente         ON chat_messages(agente_id) WHERE agente_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_chat_messages_session_agente ON chat_messages(session_id, agente_id);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_created        ON chat_messages(created_at DESC);
+
+-- RLS: apenas service role acessa (webhook usa SUPABASE_SERVICE_ROLE_KEY)
+ALTER TABLE chat_messages ENABLE ROW LEVEL SECURITY;
+CREATE POLICY IF NOT EXISTS "Service role full access chat_messages"
+  ON chat_messages FOR ALL USING (true) WITH CHECK (true);
+
+-- ============================================================
 -- ESTRUTURA FINAL
 -- ============================================================
 -- profiles       → login (auth.users)
@@ -266,4 +299,5 @@ CREATE POLICY "Admin full leads" ON leads FOR ALL
 --         ├── etapas_funil (5 por agente)
 --         └── leads (leads daquela IA)
 -- chat_memory    → N8N gerencia (não mexer)
+-- chat_messages  → webhook UazAPI gerencia (chat independente, 100% direto)
 -- ============================================================

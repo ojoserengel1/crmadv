@@ -213,10 +213,12 @@ export async function POST(req) {
     const senderName = msg.senderName || null
 
     // Busca agentes pela instância (pode haver múltiplos na mesma instância)
+    // ORDER BY created_at garante fallback determinístico (sempre o mesmo agente "padrão")
     const { data: agentesInstancia } = await supabaseAdmin
       .from('agentes')
       .select('id, cliente_id, webhook_path, ia_ativa, frase_gatilho, nicho')
       .eq('instancia_wpp', instanceName)
+      .order('created_at', { ascending: true })
 
     let agente = agentesInstancia?.[0] || null
 
