@@ -57,21 +57,37 @@ export async function GET(req) {
   }
 
   // --- chat_memory (legado N8N) ---
-  // N8N usa session_id no formato "{agente_id}:{telefone}" OU apenas "{telefone}"
-  // Busca nas duas variações para cobrir ambos os formatos, priorizando o isolado por agente
+  // N8N usa session_id no formato "{agente_id}:{telefone}" (multi-agente) ou "{telefone}" (legado)
+  //
+  // Estratégia de isolamento:
+  //   1. Tenta primeiro o formato isolado: "{agente_id}:{telefone}" → sem risco de cross-client
+  //   2. Só usa fallback "{telefone}" se não encontrou nada no formato isolado
+  //      (necessário para N8N legado single-agent, mas risco mínimo pois chat_messages já existe)
   let legacyMessages = []
   {
-    const sessionIds = []
-    if (agenteId) sessionIds.push(`${agenteId}:${telefone}`) // formato N8N multi-agente
-    sessionIds.push(telefone)                                 // formato N8N legado / single-agent
+    let legacyRows = null
 
-    const { data: legacy } = await supabaseAdmin
-      .from('chat_memory')
-      .select('id, session_id, message')
-      .in('session_id', sessionIds)
-      .order('id', { ascending: true })
+    // Passo 1: formato isolado por agente (N8N multi-agente atual)
+    if (agenteId) {
+      const { data } = await supabaseAdmin
+        .from('chat_memory')
+        .select('id, session_id, message')
+        .eq('session_id', `${agenteId}:${telefone}`)
+        .order('id', { ascending: true })
+      if (data?.length) legacyRows = data
+    }
 
-    legacyMessages = (legacy || []).map(m => {
+    // Passo 2: fallback formato legado — só se o formato isolado não retornou nada
+    if (!legacyRows) {
+      const { data } = await supabaseAdmin
+        .from('chat_memory')
+        .select('id, session_id, message')
+        .eq('session_id', telefone)
+        .order('id', { ascending: true })
+      legacyRows = data
+    }
+
+    legacyMessages = (legacyRows || []).map(m => {
       const msg = typeof m.message === 'string' ? JSON.parse(m.message) : m.message
       const content = msg?.content || msg?.data?.content || msg?.kwargs?.content || ''
       const lcClassName = Array.isArray(msg?.id) ? msg.id[msg.id.length - 1] : null
