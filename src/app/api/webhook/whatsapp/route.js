@@ -66,10 +66,6 @@ async function ensureBucket() {
 async function rehostMedia(url, mediaType, messageid, mediaKey = null, jpegThumbnail = null, mimetype = null) {
   if (!messageid) return url
 
-  const isPtt = mediaType === 'ptt' || mediaType === 'audio'
-  // PTT: não tenta download — CDN sempre retorna 26 bytes (streaming sidecar)
-  if (isPtt) return null
-
   try {
     await ensureBucket()
     let buf, ct, ext
@@ -109,6 +105,7 @@ async function rehostMedia(url, mediaType, messageid, mediaKey = null, jpegThumb
             : ct.includes('mp4') ? 'mp4'
             : ct.includes('mpeg') || ct.includes('mp3') ? 'mp3'
             : ct.includes('aac') ? 'aac'
+            : ct.includes('ogg') || ct.includes('oga') || ct.includes('opus') ? 'oga'
             : 'bin'
           console.log('[rehost] ok, size:', buf.length, 'ct:', ct)
         } catch (decErr) {
@@ -260,14 +257,18 @@ export async function POST(req) {
     // messageTimestamp já vem em milissegundos da UazAPI
     const createdAt = messageTimestamp ? new Date(messageTimestamp).toISOString() : new Date().toISOString()
 
-    // Re-hospeda imagens/vídeos no Supabase Storage via CDN + HKDF.
-    // PTT/áudio: retorna null (CDN não serve o arquivo, só sidecar de 26 bytes).
+    // Re-hospeda mídia no Supabase Storage via CDN + HKDF (imagens, vídeos e agora PTT/áudio).
+    // PTT: tenta descriptografar — se CDN retornar 26 bytes (sidecar), rehostMedia retorna URL original.
+    // media_url_decrypted só é enviado ao N8N se a URL mudou (prova que rehost teve êxito).
     const isPtt = mediaType === 'ptt' || mediaType === 'audio'
     let finalMediaUrl = mediaUrl
     if (mediaUrl || jpegThumbnail) {
       const mid = messageid || `tmp_${Date.now()}`
       finalMediaUrl = await rehostMedia(mediaUrl, mediaType, mid, mediaKey, jpegThumbnail, mimetype)
     }
+    // URL Supabase disponível somente se diferente da original (rehost teve êxito)
+    const rehostOk = finalMediaUrl && finalMediaUrl !== mediaUrl
+    const decryptedUrlForN8N = rehostOk ? finalMediaUrl : null
 
     // content: para PTT armazena duração + waveform; para outros armazena texto
     // Formato: [ptt:6s:BASE64_WAVEFORM] — waveform opcional
@@ -275,9 +276,8 @@ export async function POST(req) {
       ? `[ptt:${audioDuration || 0}s${audioWaveform ? ':' + audioWaveform : ''}]`
       : (text || null)
 
-    // media_url: para PTT guarda CDN URL original (proxy de áudio usará para tentar download)
-    //            para outros tipos usa URL do Supabase Storage (descriptografada)
-    const mediaUrlToSave = isPtt ? (mediaUrl || null) : (finalMediaUrl || null)
+    // media_url: usa URL Supabase se disponível; senão CDN original (para PTT UI tenta proxy)
+    const mediaUrlToSave = rehostOk ? finalMediaUrl : (mediaUrl || null)
 
     // media_type: sempre salvo para PTT (UI usa para renderizar card de voz)
     const mediaTypeToSave = mediaType || (finalMediaUrl ? 'media' : null)
@@ -382,7 +382,7 @@ export async function POST(req) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           // Inclui agente_id, cliente_id e ia_ativa no payload para o N8N controlar o fluxo
-          body: JSON.stringify({ ...body, agente_id: agenteId, cliente_id: clienteId, ia_ativa: iaAtiva, media_url_decrypted: finalMediaUrl || null }),
+          body: JSON.stringify({ ...body, agente_id: agenteId, cliente_id: clienteId, ia_ativa: iaAtiva, media_url_decrypted: decryptedUrlForN8N }),
         })
         console.log(`[webhook] relay N8N (${agente.webhook_path}) status:`, n8nRes.status)
       } catch (err) {
