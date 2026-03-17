@@ -1,10 +1,10 @@
 {
-  "name": "[Modelo Rengel Advocacia] IA Triagem",
+  "name": "[Coelho Advocacia - Previdenciário] IA Triagem",
   "nodes": [
     {
       "parameters": {
         "httpMethod": "POST",
-        "path": "8c283928-0094-4985-9c7c-d73c935889bd",
+        "path": "4ab0c507-e1ae-41a4-9875-b7fe7b4a4c1e",
         "options": {}
       },
       "type": "n8n-nodes-base.webhook",
@@ -13,9 +13,9 @@
         -2896,
         -1360
       ],
-      "id": "3a36229b-4b18-4385-a2cb-c80911da009c",
+      "id": "d7c5d307-c8ce-42e5-a811-d8e51e751cf8",
       "name": "Webhook",
-      "webhookId": "8c283928-0094-4985-9c7c-d73c935889bd"
+      "webhookId": "4ab0c507-e1ae-41a4-9875-b7fe7b4a4c1e"
     },
     {
       "parameters": {
@@ -37,7 +37,7 @@
         -2480,
         -1360
       ],
-      "id": "d92ce323-132f-4fd8-bca5-423a89594eb5",
+      "id": "3e81689b-6907-4bed-bbe7-b7072789987f",
       "name": "TELEFONE"
     },
     {
@@ -77,13 +77,13 @@
             {
               "id": "71bb532d-029a-48f4-afae-b6e597fe5a74",
               "name": "data_url",
-              "value": "={{ $('Webhook').item.json.body.message.mediaUrl }}",
+              "value": "={{ $('Webhook').item.json.body.media_url_decrypted || $('Webhook').item.json.body.message.content.URL }}",
               "type": "string"
             },
             {
               "id": "0df6015c-6763-468a-8b71-cfc72283444f",
               "name": "messageType",
-              "value": "={{ $('Webhook').item.json.body.message.type }}",
+              "value": "={{ $('Webhook').item.json.body.message.mediaType || $('Webhook').item.json.body.message.type }}",
               "type": "string"
             },
             {
@@ -156,7 +156,7 @@
         -1520,
         -1360
       ],
-      "id": "65f2d165-33ab-47d6-ada8-a433a810d521",
+      "id": "b72d72bb-a9e8-416f-8cc4-5425f1d241c3",
       "name": "DADOS LEAD"
     },
     {
@@ -190,7 +190,7 @@
         -624,
         -1360
       ],
-      "id": "feaca4b1-8a8f-4761-99b0-9a680e01472d",
+      "id": "d725baeb-a037-49b6-842e-e7a33d71d7f9",
       "name": "EIXSTE OU NAO"
     },
     {
@@ -207,7 +207,7 @@
         3840,
         -1408
       ],
-      "id": "51566e90-5321-484e-85eb-0ec6be87f1c9",
+      "id": "5924cd0c-4db7-4bc3-a953-1bd5d4920a26",
       "name": "AI Agent"
     },
     {
@@ -220,7 +220,7 @@
         3776,
         -1168
       ],
-      "id": "565d7fe3-3b81-4e20-94f2-f5bd3b765970",
+      "id": "6a7c8051-568d-42f7-a914-9a8220126794",
       "name": "API - IA QUALIFICACAO - ADV",
       "credentials": {
         "googlePalmApi": {
@@ -275,9 +275,18 @@
                       "type": "string",
                       "operation": "contains"
                     }
+                  },
+                  {
+                    "id": "47d7110e-d98a-40fc-a08d-53731f6b7a20",
+                    "leftValue": "={{ $('DADOS LEAD').item.json.messageType }}",
+                    "rightValue": "ptt",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
                   }
                 ],
-                "combinator": "and"
+                "combinator": "or"
               },
               "renameOutput": true,
               "outputKey": "Audio"
@@ -316,7 +325,7 @@
         80,
         -1360
       ],
-      "id": "023ce3ca-ff4a-49ef-9082-6b18ffb4246e",
+      "id": "aca7c251-104d-4f61-b5d7-50448bcf1bf8",
       "name": "Switch1"
     },
     {
@@ -332,7 +341,7 @@
         528,
         -1520
       ],
-      "id": "e052bd85-2d27-4805-82fc-1654959f1a65",
+      "id": "6ebfc71f-dd6e-47db-975e-dff3e281eae3",
       "name": "Armazenar Texto",
       "credentials": {
         "redis": {
@@ -355,7 +364,7 @@
         1536,
         -1392
       ],
-      "id": "f12bb8d4-23a5-4cf9-93e8-c31060d011df",
+      "id": "cb76fe4c-b5cd-4797-aa19-7dcf5f094f13",
       "name": "Pegar Mensagem ",
       "credentials": {
         "redis": {
@@ -374,7 +383,7 @@
         2112,
         -1392
       ],
-      "id": "2c85dfec-cd5a-4217-abfc-09dc3f6603e3",
+      "id": "15494845-d354-4c4d-b88d-c55993c6a561",
       "name": "Juntar Mensagens1"
     },
     {
@@ -387,9 +396,9 @@
         1728,
         -1392
       ],
-      "id": "b676c924-5f44-4bb3-94bc-832cca129155",
+      "id": "c6a10b10-5496-4990-adc5-d03285d5d7be",
       "name": "Delay",
-      "webhookId": "3d3207d3-8324-4e37-ab35-ba7ef6706d7f"
+      "webhookId": "eaa5f433-6c42-402d-a29d-213578ace4d0"
     },
     {
       "parameters": {
@@ -401,7 +410,7 @@
         5024,
         -1408
       ],
-      "id": "6da2f743-7733-43d1-963d-02e8a64ed503",
+      "id": "da8733d4-62bd-41bb-a7ea-59e1620ed7d7",
       "name": "Loop Over Items"
     },
     {
@@ -415,7 +424,7 @@
         4816,
         -1408
       ],
-      "id": "89a3664e-cf2a-44e4-b7c0-5d75c3304255",
+      "id": "b4b6fb9f-afb3-458e-af42-9ae286eb3f50",
       "name": "Split Out",
       "notes": "TEMPLATE DESENVOLVIDO POR NOCODE STARTUP\nhttps://nocodestartup.io/\n\nFORMAÇÃO GESTOR DE AGENTES DE IA:\nhttps://nocodestartup.io/formacao-gestor-agentes-ia/"
     },
@@ -430,7 +439,7 @@
         4352,
         -1408
       ],
-      "id": "329187f1-4a38-4f7a-99d7-bd53ac09d38d",
+      "id": "a543212e-caed-4033-b9d9-9b3b86bf50d7",
       "name": "Redis",
       "credentials": {
         "redis": {
@@ -449,7 +458,7 @@
         4608,
         -1408
       ],
-      "id": "089807f9-ed67-4dc3-ab09-32e55cdf232e",
+      "id": "48a9a603-51ae-42d3-8ce7-106151f4dc09",
       "name": "Code in JavaScript1"
     },
     {
@@ -466,7 +475,7 @@
         1904,
         -1392
       ],
-      "id": "2c5028f7-01be-4f63-afb4-bd25251e21c4",
+      "id": "365890d4-42ae-49da-8505-6c8f3a4b621a",
       "name": "Pegar Mensagem 1",
       "credentials": {
         "redis": {
@@ -506,7 +515,7 @@
         2304,
         -1392
       ],
-      "id": "9139bd5c-5b7d-488a-85eb-c557ebae888a",
+      "id": "09ee2871-eb70-4af8-84e6-17ec0c4d0ad9",
       "name": "Verificar Combinação2"
     },
     {
@@ -522,7 +531,7 @@
         3936,
         -1168
       ],
-      "id": "8959565d-a6e8-4f85-8b55-e077221568df",
+      "id": "86783e42-c144-4856-b102-7df9a784ea04",
       "name": "Postgres Chat Memory",
       "credentials": {
         "postgres": {
@@ -541,9 +550,9 @@
         5360,
         -1312
       ],
-      "id": "cd63a5d8-2960-4350-85c1-1cfe65eb9e3b",
+      "id": "b66ce353-7932-4605-813d-ed1b1cfaf4d4",
       "name": "Wait1",
-      "webhookId": "150fdea0-065e-4c2f-900f-9418008266a5"
+      "webhookId": "8b55b740-7adf-4f40-b1e4-e37fd5b5a32a"
     },
     {
       "parameters": {
@@ -576,28 +585,8 @@
         -2688,
         -1360
       ],
-      "id": "c660f40b-09ab-4df9-9dbf-fb378dc82912",
+      "id": "ba2a102e-7304-42ef-ab75-6dee0b504aa8",
       "name": "Filter"
-    },
-    {
-      "parameters": {
-        "operation": "delete",
-        "key": "554796585871"
-      },
-      "type": "n8n-nodes-base.redis",
-      "typeVersion": 1,
-      "position": [
-        -2784,
-        -1696
-      ],
-      "id": "1dfd85df-d76a-43e8-87f5-2c5973168320",
-      "name": "APAGAR MEMÓRIA",
-      "credentials": {
-        "redis": {
-          "id": "dlNS4lQvlujqlmMB",
-          "name": "Redis José"
-        }
-      }
     },
     {
       "parameters": {
@@ -639,7 +628,7 @@
         -1104,
         -1360
       ],
-      "id": "5811113d-8c99-4194-8169-579940183619",
+      "id": "f4e61bcf-1578-4e52-957d-8fcc16191e6c",
       "name": "If"
     },
     {
@@ -654,7 +643,7 @@
         -1312,
         -1360
       ],
-      "id": "e5bfd0e8-4ac8-44a6-b664-d9d12ecf62fd",
+      "id": "e5321999-0f06-45f3-90c5-05bbca871b31",
       "name": "Tem Conversa em Aberto?",
       "credentials": {
         "postgres": {
@@ -671,28 +660,8 @@
         -1056,
         -1088
       ],
-      "id": "9b9f7ad8-f2d7-445d-adc8-d6b4b72f39fa",
+      "id": "e304afdc-7369-4ad6-9a34-b3fcf3797e0e",
       "name": "No Operation, do nothing"
-    },
-    {
-      "parameters": {
-        "operation": "delete",
-        "key": "5547997094291"
-      },
-      "type": "n8n-nodes-base.redis",
-      "typeVersion": 1,
-      "position": [
-        -3104,
-        -1696
-      ],
-      "id": "7fd46ae9-b3cc-4b3c-9d8c-d9a67fff20b0",
-      "name": "APAGAR MEMÓRIA1",
-      "credentials": {
-        "redis": {
-          "id": "dlNS4lQvlujqlmMB",
-          "name": "Redis José"
-        }
-      }
     },
     {
       "parameters": {
@@ -706,7 +675,7 @@
         3088,
         -1408
       ],
-      "id": "f62fe21e-25e8-4b3a-9c23-67a3c49df98f",
+      "id": "72261e52-336e-45ee-a5f1-c0fee72b812d",
       "name": "Tem Conversa em Aberto?1",
       "credentials": {
         "postgres": {
@@ -746,7 +715,7 @@
         3232,
         -1408
       ],
-      "id": "45f77e32-f33d-42d3-8aeb-67a05bfda1f1",
+      "id": "527e0302-874e-4057-ac51-7c246c238cdd",
       "name": "If1"
     },
     {
@@ -762,7 +731,7 @@
         1152,
         -1312
       ],
-      "id": "0e8a4fef-c73a-47f2-ab3f-89af87e6d7a0",
+      "id": "e09f3ad6-9cfb-4588-bc80-c2df0b70c363",
       "name": "Armazena Áudio",
       "credentials": {
         "redis": {
@@ -791,7 +760,7 @@
         768,
         -1072
       ],
-      "id": "d5bc1967-5c7f-48c6-9854-a87ca5b5cbe0",
+      "id": "b185586a-87cc-4c51-b8b6-edf132885c4e",
       "name": "Analizar Imagem",
       "credentials": {
         "openAiApi": {
@@ -813,7 +782,7 @@
         960,
         -1072
       ],
-      "id": "10df698c-162f-4492-bc1b-32146d5b4227",
+      "id": "beebeb04-0678-4476-b309-226bc2406436",
       "name": "Armazena Imagem",
       "credentials": {
         "redis": {
@@ -842,7 +811,7 @@
         944,
         -1312
       ],
-      "id": "1af14384-e0ec-4474-bd60-c7a8bbf1e262",
+      "id": "16111a4f-b2a6-49fa-a80f-c0dc8bf44a61",
       "name": "RENOMEIA CAMPO3"
     },
     {
@@ -857,7 +826,7 @@
         752,
         -1312
       ],
-      "id": "959aa073-5424-4f98-abf1-34123c417d98",
+      "id": "397732f7-187a-4e98-b7a8-6c1edcda2b42",
       "name": "Transcribe a recording",
       "credentials": {
         "openAiApi": {
@@ -876,7 +845,7 @@
         -2256,
         -1360
       ],
-      "id": "f7db5d09-1fc1-4a9b-a00f-9a0b1ed3e00a",
+      "id": "37584c0f-f302-4a24-bb46-e73edc7965e3",
       "name": "FORMATAR TELEFONE E DATA"
     },
     {
@@ -910,7 +879,7 @@
         4352,
         -1728
       ],
-      "id": "d67669f5-0ae5-4b1e-a0b5-830ed20df015",
+      "id": "fcfe9400-06a3-43c0-9d5c-2a9b4d18b2b6",
       "name": "If2"
     },
     {
@@ -921,7 +890,7 @@
         5440,
         -1488
       ],
-      "id": "e99e9e3c-84ab-40e9-8545-b39af7861a86",
+      "id": "c490ffc7-dd0c-421f-b34d-898ef1a3da72",
       "name": "No Operation, do nothing1"
     },
     {
@@ -938,7 +907,7 @@
         4672,
         -2016
       ],
-      "id": "157fb773-f6b0-4005-8e15-c6d9713930a7",
+      "id": "f05ef6b3-7084-42ee-a850-bf2bdb18ee4e",
       "name": "AI Agent1"
     },
     {
@@ -951,7 +920,7 @@
         4656,
         -1792
       ],
-      "id": "cfdb64f7-5901-4eb7-8e12-18790b5c43cf",
+      "id": "aa23b143-dad1-44e1-985e-21d764e8de91",
       "name": "API - IA QUALIFICACAO - ADV1",
       "credentials": {
         "googlePalmApi": {
@@ -973,7 +942,7 @@
         4768,
         -1792
       ],
-      "id": "98029fed-6c7e-485e-892d-fcdb601d4eaf",
+      "id": "88b5a395-bd06-4f08-83ca-37cad06b4c9d",
       "name": "Postgres Chat Memory1",
       "credentials": {
         "postgres": {
@@ -990,7 +959,7 @@
         5200,
         -2016
       ],
-      "id": "f9f7b42f-dd34-43aa-b628-ac99e8480062",
+      "id": "a8d6d160-fb0e-4d10-9bfe-5e0221a33c77",
       "name": "No Operation, do nothing2"
     },
     {
@@ -1024,7 +993,7 @@
         2880,
         -1408
       ],
-      "id": "a1a7d347-fef3-4aa2-95f8-ddec76f2a819",
+      "id": "a63c3248-822d-4c8b-a281-76d0c5b04175",
       "name": "If3"
     },
     {
@@ -1035,7 +1004,7 @@
         3040,
         -1072
       ],
-      "id": "eda0ba09-57a5-4d87-a1a3-442d50ca65b5",
+      "id": "9f30ea9c-9a2a-419f-b9b5-6076e6575997",
       "name": "No Operation, do nothing3"
     },
     {
@@ -1050,7 +1019,7 @@
         2512,
         -1392
       ],
-      "id": "2808cc0c-8829-471d-9852-a2de8bcd2e94",
+      "id": "696d3efe-b177-4fa9-8603-42142191b201",
       "name": "Lock Atômico",
       "credentials": {
         "redis": {
@@ -1071,28 +1040,8 @@
         4480,
         -1408
       ],
-      "id": "a11a48cd-bf84-4d8d-9923-4574875ccb20",
+      "id": "3d83f0d3-4b7f-4a38-94a8-db10f28e4a65",
       "name": "Redis1",
-      "credentials": {
-        "redis": {
-          "id": "dlNS4lQvlujqlmMB",
-          "name": "Redis José"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "delete",
-        "key": "lock:5547997094291"
-      },
-      "type": "n8n-nodes-base.redis",
-      "typeVersion": 1,
-      "position": [
-        -2944,
-        -1872
-      ],
-      "id": "4c0ed455-b98a-4f6c-bab8-6a9daaabe2df",
-      "name": "APAGAR MEMÓRIA2",
       "credentials": {
         "redis": {
           "id": "dlNS4lQvlujqlmMB",
@@ -1112,7 +1061,7 @@
         -832,
         -1376
       ],
-      "id": "33f8f3ec-b035-427f-8e66-23cb3c2b1e9f",
+      "id": "740c4af1-fba5-451a-abce-0817b3a7aa57",
       "name": "BuscarUsuário",
       "alwaysOutputData": true,
       "credentials": {
@@ -1135,7 +1084,7 @@
         -288,
         -1248
       ],
-      "id": "bea5a22e-de24-4fd3-bfee-b1aa6523b4b6",
+      "id": "1451a65a-6d09-4800-a8a0-b4cad9271b8c",
       "name": "CriarUsuario",
       "credentials": {
         "postgres": {
@@ -1156,7 +1105,7 @@
         -2032,
         -1360
       ],
-      "id": "6c7b6a79-f7aa-4e4d-a8a1-db72c7f8c8d4",
+      "id": "db23bb7f-a0ba-414b-9e59-7002f4bd8321",
       "name": "BUSCAR CLIENTE",
       "credentials": {
         "postgres": {
@@ -1177,7 +1126,7 @@
         4992,
         -2016
       ],
-      "id": "f02f5658-7824-400d-8b10-6a9f37a18432",
+      "id": "c2ead595-dc20-47a9-94da-5fa4ded925a6",
       "name": "SALVAR RESUMO",
       "credentials": {
         "postgres": {
@@ -1196,7 +1145,7 @@
         -1744,
         -1360
       ],
-      "id": "78551f59-8a53-43af-9d4a-e4689562f8e2",
+      "id": "0e5b73c4-b733-48d0-8d14-756106f943ea",
       "name": "MONTAR PROMPT"
     },
     {
@@ -1223,7 +1172,7 @@
         5200,
         -1312
       ],
-      "id": "56ede25f-ea3f-4f88-b33c-ff7f1fc84237",
+      "id": "c98c0c87-e543-4697-81a8-45fb922d80cc",
       "name": "Enviar Texto"
     },
     {
@@ -1250,7 +1199,7 @@
         3568,
         -1616
       ],
-      "id": "c87cfd46-d49b-4320-a9c4-601752a90a1f",
+      "id": "dcecda1b-5589-4a8d-b9e6-d60b36769f01",
       "name": "ÁUDIO BOAS VINDAS"
     },
     {
@@ -1270,7 +1219,7 @@
         400,
         -1312
       ],
-      "id": "e29e13b8-e51b-47c6-832c-61eae3fb87bd",
+      "id": "f85a0e79-042a-4d95-ace5-895ecbf3f6c0",
       "name": "TRANSFORMA URL EM BASE"
     },
     {
@@ -1290,7 +1239,7 @@
         400,
         -1088
       ],
-      "id": "fbdf43b5-2105-45a5-8607-e0bf25b042ae",
+      "id": "56a30c27-34a2-4364-814f-818b50dc8ff5",
       "name": "TRANSFORMA URL EM BASE2"
     },
     {
@@ -1303,7 +1252,7 @@
         4128,
         -1408
       ],
-      "id": "f120deae-8b0f-46b8-a250-344bfc3f9397",
+      "id": "1e5bdcd5-1370-4431-9bc7-381a559c7502",
       "name": "CAPTURAR OUTPUT"
     },
     {
@@ -1338,7 +1287,7 @@
         2704,
         -1392
       ],
-      "id": "22bc7322-98d6-4b66-bb61-6adb80292982",
+      "id": "7cf39b94-73ff-48b1-8646-12458c5c8029",
       "name": "IA Ativa?"
     },
     {
@@ -1373,7 +1322,7 @@
         3360,
         -1600
       ],
-      "id": "acadc077-dc0b-4b7a-9330-ca894c70b4b2",
+      "id": "9ef69f17-0759-422a-842f-0fb02d8687a4",
       "name": "Tem Áudio?"
     }
   ],
@@ -1384,7 +1333,7 @@
           "headers": {
             "host": "n8n.plusstech.com.br",
             "user-agent": "uazapiGO-Webhook/1.0",
-            "content-length": "2482",
+            "content-length": "6308",
             "accept-encoding": "gzip",
             "content-type": "application/json",
             "x-forwarded-for": "49.12.82.97",
@@ -1404,9 +1353,9 @@
               "chatbot_disableUntil": 0,
               "chatbot_lastTriggerAt": 0,
               "chatbot_lastTrigger_id": "",
-              "id": "rad625114f19642",
+              "id": "rdb4af8b3ed9298",
               "image": "",
-              "imagePreview": "https://pps.whatsapp.net/v/t61.24694-24/567246082_1193575235812559_3465564935490350171_n.jpg?stp=dst-jpg_s96x96_tt6&ccb=11-4&oh=01_Q5Aa3wFx2FFjhhpPPc40KkyN5plA9EX4-ZP9DGwmG3wfZuHpbg&oe=69B80EA0&_nc_sid=5e03e0&_nc_cat=106",
+              "imagePreview": "https://pps.whatsapp.net/v/t61.24694-24/533817803_1230917132307474_5640251526208502492_n.jpg?stp=dst-jpg_s96x96_tt6&ccb=11-4&oh=01_Q5Aa4AFkXi555sqpjM5kDsb_ugkjLfM-skgGpoLTnu8qod32ww&oe=69BAE385&_nc_sid=5e03e0&_nc_cat=103",
               "lead_assignedAttendant_id": "",
               "lead_email": "",
               "lead_field01": "",
@@ -1438,14 +1387,14 @@
               "lead_status": "",
               "lead_tags": [],
               "name": "José Rengel",
-              "owner": "554796585871",
-              "phone": "+55 47 9709-4291",
+              "owner": "554789278622",
+              "phone": "+55 47 8488-5120",
               "wa_archived": false,
-              "wa_chatid": "554797094291@s.whatsapp.net",
-              "wa_chatlid": "252608618987703@lid",
+              "wa_chatid": "554784885120@s.whatsapp.net",
+              "wa_chatlid": "248327123804222@lid",
               "wa_contactName": "",
               "wa_ephemeralExpiration": 0,
-              "wa_fastid": "554796585871:554797094291",
+              "wa_fastid": "554789278622:554784885120",
               "wa_isBlocked": false,
               "wa_isGroup": false,
               "wa_isGroup_admin": false,
@@ -1454,51 +1403,64 @@
               "wa_isGroup_member": false,
               "wa_isPinned": false,
               "wa_label": [],
-              "wa_lastMessageSender": "252608618987703@lid",
-              "wa_lastMessageTextVote": "ola",
-              "wa_lastMessageType": "Conversation",
-              "wa_lastMsgTimestamp": 1772815437000,
+              "wa_lastMessageSender": "248327123804222@lid",
+              "wa_lastMessageTextVote": "",
+              "wa_lastMessageType": "ImageMessage",
+              "wa_lastMsgTimestamp": 1773750516000,
               "wa_muteEndTime": 0,
               "wa_name": "José Rengel",
-              "wa_unreadCount": 11
+              "wa_unreadCount": 3
             },
             "chatSource": "updated",
-            "instanceName": "ia-trabalhista-90f1b8",
+            "instanceName": "ia-previdenci-rio-506f87",
             "message": {
               "buttonOrListid": "",
-              "chatid": "554797094291@s.whatsapp.net",
-              "chatlid": "252608618987703@lid",
-              "content": "ola",
+              "chatid": "554784885120@s.whatsapp.net",
+              "chatlid": "248327123804222@lid",
+              "content": {
+                "URL": "https://mmg.whatsapp.net/o1/v/t24/f2/m233/AQNYplLVaUP8yN9Xp4RJtpBGhO61_W0T6aXKQwno_VV0YpAQuWuYPE0SsuLYX6NxI1Td_f3dgk2nnkHogL_i6-0HegSaM6RkS0E4lOnXNQ?ccb=9-4&oh=01_Q5Aa4AFbJlyCxNsWkBcnMD2DpqhpraC3nw4KPKRRpZ-1M5GX1g&oe=69E0B811&_nc_sid=e6ed6c&mms3=true",
+                "mimetype": "image/jpeg",
+                "fileSHA256": "iQ1GPd0faAEZAYyx08VReexE6NDGbSqphox5lTCIllg=",
+                "fileLength": 59173,
+                "height": 520,
+                "width": 1326,
+                "mediaKey": "vBDEy18j5+15i0BDld8gXDZQF2rzuDf/2l11r84iIHQ=",
+                "fileEncSHA256": "qTanVlGgQvQzUoMZqoyjPsrBJ0qgMDL8hT149odyIcg=",
+                "directPath": "/o1/v/t24/f2/m233/AQNYplLVaUP8yN9Xp4RJtpBGhO61_W0T6aXKQwno_VV0YpAQuWuYPE0SsuLYX6NxI1Td_f3dgk2nnkHogL_i6-0HegSaM6RkS0E4lOnXNQ?ccb=9-4&oh=01_Q5Aa4AFbJlyCxNsWkBcnMD2DpqhpraC3nw4KPKRRpZ-1M5GX1g&oe=69E0B811&_nc_sid=e6ed6c",
+                "mediaKeyTimestamp": 1773750515,
+                "JPEGThumbnail": "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",
+                "viewOnce": false
+              },
               "convertOptions": "",
               "edited": "",
               "fromMe": false,
-              "groupName": "Unknown",
-              "id": "554796585871:3B6031B9ACA1140DF294",
+              "groupName": "",
+              "id": "554789278622:3EB01E4DF4BE773E2183DE",
               "isGroup": false,
-              "mediaType": "",
-              "messageTimestamp": 1772815437000,
-              "messageType": "Conversation",
-              "messageid": "3B6031B9ACA1140DF294",
-              "owner": "554796585871",
+              "mediaType": "image",
+              "messageTimestamp": 1773750516000,
+              "messageType": "ImageMessage",
+              "messageid": "3EB01E4DF4BE773E2183DE",
+              "owner": "554789278622",
               "quoted": "",
               "reaction": "",
-              "sender": "252608618987703@lid",
+              "sender": "248327123804222@lid",
               "senderName": "José Rengel",
-              "sender_lid": "252608618987703@lid",
-              "sender_pn": "554797094291@s.whatsapp.net",
-              "source": "unknown",
+              "sender_lid": "248327123804222@lid",
+              "sender_pn": "554784885120@s.whatsapp.net",
+              "source": "web",
               "status": "",
-              "text": "ola",
+              "text": "",
               "track_id": "",
               "track_source": "",
-              "type": "text",
+              "type": "media",
               "vote": "",
               "wasSentByApi": false
             },
-            "owner": "554796585871",
-            "token": "5c869095-cb06-4217-9853-278fc2d6b8be"
+            "owner": "554789278622",
+            "token": "9bfba0af-b173-4bba-af0a-2e603cade9e7"
           },
-          "webhookUrl": "https://n8n.plusstech.com.br/webhook-test/44d32ad6-0b39-4ac4-9427-0cb78648fa46",
+          "webhookUrl": "https://n8n.plusstech.com.br/webhook-test/4ab0c507-e1ae-41a4-9875-b7fe7b4a4c1e",
           "executionMode": "test"
         },
         "pairedItem": {
@@ -2147,11 +2109,11 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "4fe1d786-b917-4853-ad73-30ad72240669",
+  "versionId": "a230dd78-0f7b-4882-af0f-0d1c72c65c17",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "804c00b1e5188d906bae124422d170cfebea2fae250a07ce077882d6fad45087"
   },
-  "id": "xpq86Ecptbh2wfMh",
+  "id": "B4l1mdZhPVTJ7CV9",
   "tags": []
 }

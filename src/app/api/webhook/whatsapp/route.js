@@ -382,7 +382,7 @@ export async function POST(req) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           // Inclui agente_id, cliente_id e ia_ativa no payload para o N8N controlar o fluxo
-          body: JSON.stringify({ ...body, agente_id: agenteId, cliente_id: clienteId, ia_ativa: iaAtiva }),
+          body: JSON.stringify({ ...body, agente_id: agenteId, cliente_id: clienteId, ia_ativa: iaAtiva, media_url_decrypted: finalMediaUrl || null }),
         })
         console.log(`[webhook] relay N8N (${agente.webhook_path}) status:`, n8nRes.status)
       } catch (err) {
